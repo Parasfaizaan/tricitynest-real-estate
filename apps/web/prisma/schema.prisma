@@ -1,0 +1,381 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum Category {
+  RESIDENTIAL
+  COMMERCIAL
+}
+
+enum TransactionType {
+  BUY
+  RENT
+  INVEST
+}
+
+enum PropertyStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Furnishing {
+  UNFURNISHED
+  SEMI_FURNISHED
+  FURNISHED
+}
+
+enum Possession {
+  READY
+  UNDER_CONSTRUCTION
+  NEW_LAUNCH
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  VISIT_SCHEDULED
+  CONVERTED
+  CLOSED
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum EnquiryStatus {
+  NEW
+  READ
+  CLOSED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  role          Role     @default(USER)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  propertiesCreated Property[] @relation("CreatedBy")
+  propertiesUpdated Property[] @relation("UpdatedBy")
+  deletionRequests  PropertyDeletionRequest[] @relation("RequestedBy")
+  deletionReviews   PropertyDeletionRequest[] @relation("ReviewedBy")
+  auditLogs         AuditLog[]
+  leadNotes         LeadNote[]
+  favourites        Favourite[]
+}
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  city      String
+  state     String   @default("Punjab")
+  imageUrl  String?
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  properties Property[]
+}
+
+model PropertyType {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  category  Category
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  properties Property[]
+}
+
+model Amenity {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  icon      String?
+  active    Boolean  @default(true)
+  properties PropertyAmenity[]
+}
+
+model Builder {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logoUrl     String?
+  description String?
+  properties  Property[]
+}
+
+model Property {
+  id               String          @id @default(cuid())
+  slug             String          @unique
+  title            String
+  shortDescription String
+  description      String
+  category         Category
+  propertyTypeId   String
+  propertyType     PropertyType    @relation(fields: [propertyTypeId], references: [id])
+  transactionType  TransactionType
+  status           PropertyStatus  @default(DRAFT)
+  featured         Boolean         @default(false)
+  price            Int
+  priceMax         Int?
+  negotiable       Boolean         @default(true)
+  bedrooms         Int?
+  bathrooms        Int?
+  balconies        Int?
+  area             Int
+  areaUnit         String          @default("sqft")
+  carpetArea       Int?
+  address          String
+  locality         String
+  locationId       String
+  location         Location        @relation(fields: [locationId], references: [id])
+  city             String
+  state            String          @default("Punjab")
+  postalCode       String?
+  latitude         Float?
+  longitude        Float?
+  furnishing       Furnishing      @default(UNFURNISHED)
+  facing           String?
+  possession       Possession      @default(READY)
+  possessionDate   String?
+  reraNumber       String?
+  floor            Int?
+  totalFloors      Int?
+  parking          Boolean         @default(false)
+  builderId        String?
+  builder          Builder?        @relation(fields: [builderId], references: [id])
+  tagline          String?
+  views            Int             @default(0)
+  createdById      String?
+  createdBy        User?           @relation("CreatedBy", fields: [createdById], references: [id])
+  updatedById      String?
+  updatedBy        User?           @relation("UpdatedBy", fields: [updatedById], references: [id])
+  publishedAt      DateTime?
+  deletedAt        DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  images           PropertyImage[]
+  amenities        PropertyAmenity[]
+  features         PropertyFeature[]
+  floorPlans       FloorPlan[]
+  enquiries        Enquiry[]
+  matches          PropertyMatch[]
+  deletionRequests PropertyDeletionRequest[]
+  favourites       Favourite[]
+
+  @@index([status, featured])
+  @@index([city, category, transactionType])
+  @@index([price])
+  @@index([slug])
+}
+
+model PropertyImage {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url        String
+  publicId   String?
+  alt        String?
+  sortOrder  Int      @default(0)
+  isCover    Boolean  @default(false)
+}
+
+model PropertyAmenity {
+  propertyId String
+  amenityId  String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, amenityId])
+}
+
+model PropertyFeature {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  label      String
+}
+
+model FloorPlan {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  title      String
+  imageUrl   String
+  area       Int?
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  name        String
+  phone       String
+  email       String
+  whatsapp    String?
+  consent     Boolean    @default(true)
+  status      LeadStatus @default(NEW)
+  source      String     @default("matcher")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  preference  PropertyPreference?
+  matches     PropertyMatch[]
+  notes       LeadNote[]
+}
+
+model PropertyPreference {
+  id              String           @id @default(cuid())
+  leadId          String           @unique
+  lead            Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  categories      String
+  propertyTypes   String
+  transactionType TransactionType
+  locationSlugs   String
+  minBudget       Int?
+  maxBudget       Int?
+  bedrooms        String?
+  minArea         Int?
+  maxArea         Int?
+  timeline        String?
+  createdAt       DateTime         @default(now())
+}
+
+model PropertyMatch {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  score      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@unique([leadId, propertyId])
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+}
+
+model Enquiry {
+  id         String        @id @default(cuid())
+  propertyId String?
+  property   Property?     @relation(fields: [propertyId], references: [id])
+  name       String
+  phone      String
+  email      String?
+  message    String?
+  status     EnquiryStatus @default(NEW)
+  createdAt  DateTime      @default(now())
+}
+
+model ContactMessage {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  topic     String?
+  message   String
+  status    EnquiryStatus @default(NEW)
+  createdAt DateTime      @default(now())
+}
+
+model SellLead {
+  id            String   @id @default(cuid())
+  name          String
+  phone         String
+  email         String?
+  city          String?
+  propertyType  String?
+  expectedPrice Int?
+  message       String?
+  createdAt     DateTime @default(now())
+}
+
+model Newsletter {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model PropertyDeletionRequest {
+  id          String                 @id @default(cuid())
+  propertyId  String
+  property    Property               @relation(fields: [propertyId], references: [id])
+  requestedById String
+  requestedBy User                   @relation("RequestedBy", fields: [requestedById], references: [id])
+  reason      String
+  notes       String?
+  status      DeletionRequestStatus  @default(PENDING)
+  requestedAt DateTime               @default(now())
+  reviewedById String?
+  reviewedBy  User?                  @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  reviewedAt  DateTime?
+  reviewNotes String?
+
+  @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  metadata   String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Favourite {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
+
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

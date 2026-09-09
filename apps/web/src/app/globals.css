@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+:root {
+  --navy: #061827;
+  --navy-2: #142534;
+  --navy-3: #1c3548;
+  --page: #eef4f7;
+  --ice: #a8d8f5;
+  --ice-2: #c9e7f8;
+  --ink: #0d1b24;
+  --ink-soft: #4a6270;
+  --line: #d5e1e8;
+  --white: #ffffff;
+  --radius: 22px;
+}
+
+@theme inline {
+  --color-navy: var(--navy);
+  --color-navy-2: var(--navy-2);
+  --color-navy-3: var(--navy-3);
+  --color-page: var(--page);
+  --color-ice: var(--ice);
+  --color-ice-2: var(--ice-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --font-sans: var(--font-sans-var);
+  --font-display: var(--font-display-var);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans-var), Inter, system-ui, sans-serif;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+::selection {
+  background: var(--ice);
+  color: var(--navy);
+}
+
+a { color: inherit; text-decoration: none; }
+
+button, input, select, textarea { font-family: inherit; }
+
+.container-px {
+  width: min(1240px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.section-pad {
+  padding-block: clamp(4rem, 8vw, 7.5rem);
+}
+
+.display {
+  font-family: var(--font-display-var), Inter, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.card-surface {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+}
+
+input, select, textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  color: var(--ink);
+  outline: none;
+  min-height: 44px;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #7fb7d8;
+  box-shadow: 0 0 0 4px rgba(168, 216, 245, 0.35);
+}
+
+.dark-field input, .dark-field select, .dark-field textarea {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
+.dark-field input::placeholder, .dark-field textarea::placeholder {
+  color: rgba(255,255,255,0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

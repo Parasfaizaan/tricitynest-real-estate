@@ -1,0 +1,19 @@
+{
+  "name": "tricitynest",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @tricitynest/web",
+    "build": "npm run build -w @tricitynest/web",
+    "start": "npm run start -w @tricitynest/web",
+    "lint": "npm run lint -w @tricitynest/web",
+    "db:generate": "npm run db:generate -w @tricitynest/web",
+    "db:push": "npm run db:push -w @tricitynest/web",
+    "db:seed": "npm run db:seed -w @tricitynest/web",
+    "postinstall": "npm run db:generate -w @tricitynest/web"
+  }
+}
