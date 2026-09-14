@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { propertyInclude, serializeProperty } from "@/lib/property-query";
+import { hasPriceAccess } from "@/lib/price-access";
 import { PropertyStatus } from "@prisma/client";
 import { SiteShell } from "@/components/layout/site-shell";
 import { PropertyDetail } from "@/components/property/detail";
@@ -36,9 +37,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ slug:
     include: propertyInclude,
     take: 3,
   });
-  const [locations, types] = await Promise.all([
+  const [locations, types, canViewPrice] = await Promise.all([
     prisma.location.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     prisma.propertyType.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
+    hasPriceAccess(),
   ]);
   const jsonLd = {
     "@context": "https://schema.org",
@@ -56,7 +58,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ slug:
   return (
     <SiteShell taxonomies={{ locations, propertyTypes: types }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <PropertyDetail property={serializeProperty(property)} similar={similar.map(serializeProperty)} />
+      <PropertyDetail
+        property={serializeProperty(property, canViewPrice)}
+        similar={similar.map((item) => serializeProperty(item, canViewPrice))}
+      />
     </SiteShell>
   );
 }

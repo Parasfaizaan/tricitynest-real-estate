@@ -149,7 +149,7 @@ export function serializeProperty(p: {
   location: { name: string; slug: string };
   propertyType: { name: string; slug: string };
   builder?: { name: string } | null;
-}) {
+}, canViewPrice = true) {
   return {
     id: p.id,
     slug: p.slug,
@@ -160,8 +160,9 @@ export function serializeProperty(p: {
     transactionType: p.transactionType,
     status: p.status,
     featured: p.featured,
-    price: p.price,
-    priceMax: p.priceMax,
+    price: canViewPrice ? p.price : null,
+    priceMax: canViewPrice ? p.priceMax : null,
+    priceLocked: !canViewPrice,
     negotiable: p.negotiable,
     bedrooms: p.bedrooms,
     bathrooms: p.bathrooms,

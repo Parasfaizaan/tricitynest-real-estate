@@ -1,4 +1,5 @@
 import { queryProperties, serializeProperty, type PropertyFilters } from "@/lib/property-query";
+import { hasPriceAccess } from "@/lib/price-access";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -20,9 +21,11 @@ export async function GET(req: Request) {
     page: url.searchParams.get("page") ?? undefined,
     pageSize: url.searchParams.get("pageSize") ?? undefined,
   };
-  const result = await queryProperties(filters);
+  const [result, canViewPrice] = await Promise.all([queryProperties(filters), hasPriceAccess()]);
   return Response.json({
     ...result,
-    items: result.items.map(serializeProperty),
+    items: result.items.map((item) => serializeProperty(item, canViewPrice)),
+  }, {
+    headers: { "Cache-Control": "private, no-store" },
   });
 }

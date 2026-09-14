@@ -10,7 +10,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export function Button({ href, variant = "primary", className, children, ...rest }: Props) {
   const styles = cn(
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold tracking-tight transition-all duration-200",
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold tracking-tight transition-all duration-200 hover:-translate-y-px active:translate-y-0 active:scale-[0.99]",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice focus-visible:ring-offset-2",
     variant === "primary" && "bg-navy text-white hover:bg-navy-2",
     variant === "dark" && "bg-navy-2 text-white hover:bg-navy",

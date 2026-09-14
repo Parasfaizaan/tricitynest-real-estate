@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { motionDurations, motionEase } from "@/components/motion/variants";
 
 const links = [
   { href: "/properties", label: "Properties" },
@@ -25,7 +26,7 @@ export function Header({ onOpenMatcher }: { onOpenMatcher?: () => void }) {
   const home = pathname === "/";
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => setScrolled(window.scrollY > 56);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -43,7 +44,9 @@ export function Header({ onOpenMatcher }: { onOpenMatcher?: () => void }) {
     <header
       className={cn(
         "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        solid ? "bg-[#061827]/95 text-white shadow-[0_10px_40px_rgba(6,24,39,0.18)] backdrop-blur-md" : "bg-transparent text-white"
+        solid
+          ? "border-b border-white/10 bg-[#061827]/94 text-white shadow-[0_12px_42px_rgba(6,24,39,0.2)] backdrop-blur-md"
+          : "border-b border-transparent bg-transparent text-white"
       )}
     >
       <div className="container-px flex h-[72px] items-center justify-between gap-6">
@@ -77,6 +80,7 @@ export function Header({ onOpenMatcher }: { onOpenMatcher?: () => void }) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: motionDurations.button, ease: motionEase }}
             className="overflow-hidden border-t border-white/10 bg-[#061827] lg:hidden"
           >
             <div className="container-px flex flex-col gap-4 py-6">

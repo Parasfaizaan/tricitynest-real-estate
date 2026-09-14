@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { propertyInclude, serializeProperty } from "@/lib/property-query";
 import { jsonError } from "@/lib/utils";
+import { hasPriceAccess } from "@/lib/price-access";
 import { PropertyStatus } from "@prisma/client";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }> }) {
@@ -28,8 +29,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
     orderBy: { featured: "desc" },
   });
 
+  const canViewPrice = await hasPriceAccess();
   return Response.json({
-    property: serializeProperty(property),
-    similar: similar.map(serializeProperty),
+    property: serializeProperty(property, canViewPrice),
+    similar: similar.map((item) => serializeProperty(item, canViewPrice)),
+  }, {
+    headers: { "Cache-Control": "private, no-store" },
   });
 }

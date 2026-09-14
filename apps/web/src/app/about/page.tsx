@@ -12,7 +12,7 @@ export default async function AboutPage() {
         <p className="eyebrow">About</p>
         <h1 className="display mt-3 text-[clamp(2.2rem,5vw,4rem)] text-navy">Quiet inventory. Honest prices.</h1>
         <p className="mt-6 text-lg leading-relaxed text-ink-soft">
-          TricityNest is an independent property studio for Mohali, Chandigarh, Zirakpur, Kharar, New Chandigarh, Derabassi and Banur. We photograph every listing, publish the number we would pay, and match you in five questions — not fifty WhatsApp forwards.
+          tricityinvestment is an independent property studio for Mohali, Chandigarh, Zirakpur, Kharar, New Chandigarh, Derabassi and Banur. We photograph every listing, publish the number we would pay, and match you in five questions - not fifty WhatsApp forwards.
         </p>
         <p className="mt-4 leading-relaxed text-ink-soft">
           Founded as a corridor-first advisory, we work with a small set of builders and private sellers. If a home is not ready to be shown, it is not on this site.

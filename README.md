@@ -1,4 +1,4 @@
-# TricityNest
+# tricityinvestment
 
 Premium real-estate platform for the Chandigarh corridor (Mohali, Chandigarh, Zirakpur, Kharar). Built as an npm workspaces monorepo with Next.js (App Router) for both the public site and staff dashboards.
 
@@ -28,8 +28,8 @@ Open http://localhost:3000
 
 ## Demo logins
 
-- Super Admin: `superadmin@tricitynest.com` / `SuperAdmin@123`
-- Admin: `admin@tricitynest.com` / `Admin@123`
+- Super Admin: `superadmin@tricityinvestment.com` / `SuperAdmin@123`
+- Admin: `admin@tricityinvestment.com` / `Admin@123`
 
 Admins can create and edit listings. Permanent delete requires Super Admin approval.
 

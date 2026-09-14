@@ -25,7 +25,7 @@ const IMAGES = {
   zirakpur: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80",
   kharar: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80",
   newchd: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
-  derabassi: "https://images.unsplash.com/photo-1600047509807-ba8d526a4c35?auto=format&fit=crop&w=1200&q=80",
+  derabassi: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80",
   banur: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80",
 };
 
@@ -57,7 +57,7 @@ async function main() {
 
   const superAdmin = await prisma.user.create({
     data: {
-      email: "superadmin@tricitynest.com",
+      email: "superadmin@tricityinvestment.com",
       passwordHash: hash("SuperAdmin@123"),
       name: "Aarav Mehta",
       role: Role.SUPER_ADMIN,
@@ -66,7 +66,7 @@ async function main() {
 
   const admin1 = await prisma.user.create({
     data: {
-      email: "admin@tricitynest.com",
+      email: "admin@tricityinvestment.com",
       passwordHash: hash("Admin@123"),
       name: "Priya Sharma",
       role: Role.ADMIN,
@@ -75,9 +75,9 @@ async function main() {
 
   await prisma.user.createMany({
     data: [
-      { email: "admin2@tricitynest.com", passwordHash: hash("Admin@123"), name: "Rohit Gill", role: Role.ADMIN },
-      { email: "admin3@tricitynest.com", passwordHash: hash("Admin@123"), name: "Simran Kaur", role: Role.ADMIN },
-      { email: "user@tricitynest.com", passwordHash: hash("User@123"), name: "Guest Buyer", role: Role.USER },
+      { email: "admin2@tricityinvestment.com", passwordHash: hash("Admin@123"), name: "Rohit Gill", role: Role.ADMIN },
+      { email: "admin3@tricityinvestment.com", passwordHash: hash("Admin@123"), name: "Simran Kaur", role: Role.ADMIN },
+      { email: "user@tricityinvestment.com", passwordHash: hash("User@123"), name: "Guest Buyer", role: Role.USER },
     ],
   });
 
@@ -558,7 +558,7 @@ async function main() {
     data: [
       { key: "phone", value: "+91 172 500 4400" },
       { key: "whatsapp", value: "91725004400" },
-      { key: "email", value: "hello@tricitynest.com" },
+      { key: "email", value: "hello@tricityinvestment.com" },
     ],
   });
 
@@ -571,7 +571,7 @@ async function main() {
     },
   });
 
-  console.log("Seeded TricityNest demo data.");
+  console.log("Seeded tricityinvestment demo data.");
 }
 
 main()

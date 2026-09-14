@@ -40,7 +40,7 @@ function LoginInner() {
         <Logo />
         <h1 className="display mt-6 text-3xl text-navy">Staff login</h1>
         <form onSubmit={onSubmit} className="mt-6 grid gap-3">
-          <input name="email" type="email" required placeholder="Email" defaultValue="admin@tricitynest.com" />
+          <input name="email" type="email" required placeholder="Email" defaultValue="admin@tricityinvestment.com" />
           <input name="password" type="password" required placeholder="Password" defaultValue="Admin@123" />
           <Button type="submit" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
@@ -49,8 +49,8 @@ function LoginInner() {
         </form>
         <div className="mt-6 rounded-2xl bg-page p-4 text-xs text-ink-soft">
           <p className="font-semibold text-navy">Demo accounts</p>
-          <p className="mt-2">superadmin@tricitynest.com / SuperAdmin@123</p>
-          <p>admin@tricitynest.com / Admin@123</p>
+          <p className="mt-2">superadmin@tricityinvestment.com / SuperAdmin@123</p>
+          <p>admin@tricityinvestment.com / Admin@123</p>
         </div>
       </div>
     </div>

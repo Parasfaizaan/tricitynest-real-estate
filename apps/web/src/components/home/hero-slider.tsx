@@ -4,15 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { formatArea, formatInr, bhkLabel } from "@/lib/format";
+import { formatArea, bhkLabel } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { PriceDisplay } from "@/components/price/price-display";
+import { motionDurations, motionEase, staggerContainer, staggerItem } from "@/components/motion/variants";
 
 export type HeroSlide = {
   slug: string;
   title: string;
   locality: string;
   city: string;
-  price: number;
+  price: number | null;
+  priceLocked?: boolean;
   transactionType: string;
   bedrooms?: number | null;
   area: number;
@@ -43,7 +46,7 @@ export function HeroSlider({
 
   useEffect(() => {
     if (paused || reduce || slides.length < 2) return;
-    const t = setInterval(next, 5500);
+    const t = setInterval(next, 5800);
     return () => clearInterval(t);
   }, [paused, reduce, next, slides.length]);
 
@@ -76,14 +79,14 @@ export function HeroSlider({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: reduce ? 0 : 0.9 }}
+          transition={{ duration: reduce ? 0 : motionDurations.heroSlide, ease: motionEase }}
         >
           {cover && (
             <motion.div
               className="absolute inset-0"
-              initial={{ scale: 1 }}
-              animate={{ scale: reduce ? 1 : 1.06 }}
-              transition={{ duration: 5.5, ease: "linear" }}
+              initial={{ scale: reduce ? 1 : 1.015 }}
+              animate={{ scale: reduce ? 1 : 1.045 }}
+              transition={{ duration: motionDurations.kenBurns, ease: "linear" }}
             >
               <Image
                 src={cover}
@@ -104,42 +107,50 @@ export function HeroSlider({
           <AnimatePresence mode="wait">
             <motion.div
               key={current.slug + "-copy"}
-              initial={reduce ? false : { opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.5 }}
+              initial={reduce ? false : "hidden"}
+              animate="show"
+              exit={reduce ? undefined : { opacity: 0, y: -10, transition: { duration: 0.22, ease: motionEase } }}
+              variants={reduce ? undefined : staggerContainer}
               className="max-w-2xl"
             >
-              <p className="eyebrow text-ice">
-                {current.propertyType?.name ?? "Featured"} · {current.city}
-              </p>
-              <h1 className="display mt-4 text-[clamp(2.4rem,6vw,5.4rem)] text-white">{current.title}</h1>
-              <p className="mt-4 text-base text-white/75">
+              <motion.p variants={staggerItem} className="eyebrow text-ice">
+                {current.propertyType?.name ?? "Featured"} - {current.city}
+              </motion.p>
+              <motion.h1 variants={staggerItem} className="display mt-4 text-[clamp(2.4rem,6vw,5.4rem)] text-white">
+                {current.title}
+              </motion.h1>
+              <motion.p variants={staggerItem} className="mt-4 text-base text-white/75">
                 {current.locality}, {current.city}
-                {bhkLabel(current.bedrooms) ? ` · ${bhkLabel(current.bedrooms)}` : ""} · {formatArea(current.area)}
-              </p>
-              <p className="mt-3 text-2xl font-semibold">
-                {formatInr(current.price, current.transactionType)}
-                {current.negotiable ? <span className="ml-3 text-sm font-normal text-ice">Negotiable</span> : null}
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
+                {bhkLabel(current.bedrooms) ? ` - ${bhkLabel(current.bedrooms)}` : ""} - {formatArea(current.area)}
+              </motion.p>
+              <motion.p variants={staggerItem} className="mt-3 text-2xl font-semibold">
+                <PriceDisplay
+                  price={current.price}
+                  priceLocked={current.priceLocked}
+                  transactionType={current.transactionType}
+                  property={{ propertySlug: current.slug, propertyTitle: current.title }}
+                  dark
+                />
+                {!current.priceLocked && current.negotiable ? <span className="ml-3 text-sm font-normal text-ice">Negotiable</span> : null}
+              </motion.p>
+              <motion.div variants={staggerItem} className="mt-8 flex flex-wrap gap-3">
                 <Button href={`/property/${current.slug}`} variant="ice">
                   View property
                 </Button>
                 <Button variant="ghost" className="border border-white/20" onClick={onOpenMatcher} type="button">
                   Find a property
                 </Button>
-              </div>
+              </motion.div>
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
 
       <div className="absolute bottom-8 right-6 z-10 hidden items-center gap-3 sm:flex">
-        <button aria-label="Previous" onClick={prev} className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10">
+        <button aria-label="Previous" onClick={prev} className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 transition duration-200 hover:-translate-y-0.5 hover:border-ice/45 hover:bg-white/15 active:translate-y-0">
           <ChevronLeft size={18} />
         </button>
-        <button aria-label="Next" onClick={next} className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10">
+        <button aria-label="Next" onClick={next} className="grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 transition duration-200 hover:-translate-y-0.5 hover:border-ice/45 hover:bg-white/15 active:translate-y-0">
           <ChevronRight size={18} />
         </button>
       </div>
@@ -150,7 +161,7 @@ export function HeroSlider({
             key={s.slug}
             aria-label={`Go to slide ${i + 1}`}
             onClick={() => setIndex(i)}
-            className={`h-1.5 rounded-full transition-all ${i === index ? "w-10 bg-ice" : "w-5 bg-white/35"}`}
+            className={`h-1.5 rounded-full transition-all duration-300 ${i === index ? "w-10 bg-ice" : "w-5 bg-white/35"}`}
           />
         ))}
       </div>

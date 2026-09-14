@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { propertyInclude, serializeProperty } from "@/lib/property-query";
+import { hasPriceAccess } from "@/lib/price-access";
 import { PropertyStatus } from "@prisma/client";
 import { SiteShell } from "@/components/layout/site-shell";
 import { HomeExperience } from "@/components/home/home-experience";
 
 export default async function HomePage() {
-  const [featured, locations, taxonomies, count] = await Promise.all([
+  const [featured, locations, taxonomies, count, canViewPrice] = await Promise.all([
     prisma.property.findMany({
       where: { status: PropertyStatus.PUBLISHED, deletedAt: null, featured: true },
       include: propertyInclude,
@@ -22,6 +23,7 @@ export default async function HomePage() {
       prisma.propertyType.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     ]),
     prisma.property.count({ where: { status: PropertyStatus.PUBLISHED, deletedAt: null } }),
+    hasPriceAccess(),
   ]);
 
   const [locs, types] = taxonomies;
@@ -37,8 +39,8 @@ export default async function HomePage() {
       taxonomies={{ locations: locs, propertyTypes: types }}
     >
       <HomeExperience
-        slides={slides.map(serializeProperty)}
-        featured={featured.map(serializeProperty)}
+        slides={slides.map((item) => serializeProperty(item, canViewPrice))}
+        featured={featured.map((item) => serializeProperty(item, canViewPrice))}
         locations={locations}
         count={count}
       />

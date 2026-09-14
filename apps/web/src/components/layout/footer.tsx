@@ -57,7 +57,7 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10">
         <div className="container-px flex flex-col gap-2 py-5 text-xs text-white/45 sm:flex-row sm:justify-between">
-          <span>© {new Date().getFullYear()} TricityNest. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} tricityinvestment. All rights reserved.</span>
           <span>Chandigarh · Mohali · Zirakpur · Kharar</span>
         </div>
       </div>

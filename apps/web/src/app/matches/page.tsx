@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { SiteShell } from "@/components/layout/site-shell";
 import { MatchesClient } from "@/components/matcher/matches-client";
+import { hasPriceAccess } from "@/lib/price-access";
+import { propertyInclude, serializeProperty } from "@/lib/property-query";
 
 export default async function MatchesPage({
   searchParams,
@@ -8,9 +10,10 @@ export default async function MatchesPage({
   searchParams: Promise<{ lead?: string }>;
 }) {
   const { lead } = await searchParams;
-  const [locations, types] = await Promise.all([
+  const [locations, types, canViewPrice] = await Promise.all([
     prisma.location.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
     prisma.propertyType.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" } }),
+    hasPriceAccess(),
   ]);
 
   let serverMatches: unknown[] = [];
@@ -19,16 +22,12 @@ export default async function MatchesPage({
       where: { leadId: lead },
       include: {
         property: {
-          include: {
-            images: { orderBy: { sortOrder: "asc" } },
-            location: true,
-            propertyType: true,
-          },
+          include: propertyInclude,
         },
       },
       orderBy: { score: "desc" },
     });
-    serverMatches = rows.map((r) => ({ ...r.property, score: r.score }));
+    serverMatches = rows.map((r) => ({ ...serializeProperty(r.property, canViewPrice), score: r.score }));
   }
 
   return (

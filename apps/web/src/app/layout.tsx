@@ -20,15 +20,15 @@ const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(site),
   title: {
-    default: "TricityNest — Homes in Mohali, Chandigarh, Zirakpur & Kharar",
-    template: "%s · TricityNest",
+    default: "tricityinvestment - Homes in Mohali, Chandigarh, Zirakpur & Kharar",
+    template: "%s - tricityinvestment",
   },
   description:
     "Verified flats, villas, plots and commercial property across the Chandigarh corridor. Real prices, real photos, personalised matching.",
   openGraph: {
     type: "website",
-    siteName: "TricityNest",
-    title: "TricityNest — Homes in the Chandigarh corridor",
+    siteName: "tricityinvestment",
+    title: "tricityinvestment - Homes in the Chandigarh corridor",
     description: "Verified property across Mohali, Chandigarh, Zirakpur and Kharar.",
   },
   robots: { index: true, follow: true },

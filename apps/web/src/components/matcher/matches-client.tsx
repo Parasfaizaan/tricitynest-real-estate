@@ -11,7 +11,7 @@ export function MatchesClient({ serverMatches }: { serverMatches: unknown[] }) {
       const raw = sessionStorage.getItem("tn_matches");
       if (raw) {
         const data = JSON.parse(raw);
-        return data.matches ?? [];
+        return (data.matches ?? []).map((item: CardProperty) => ({ ...item, price: null, priceLocked: true }));
       }
     } catch {}
     return [];

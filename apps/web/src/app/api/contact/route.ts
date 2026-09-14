@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { jsonError } from "@/lib/utils";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { grantPriceAccess } from "@/lib/price-access";
 
 const schema = z.object({
   name: z.string().min(2),
@@ -17,5 +18,6 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return jsonError("Please complete the form.");
   const row = await prisma.contactMessage.create({ data: parsed.data });
+  await grantPriceAccess();
   return Response.json({ ok: true, id: row.id });
 }

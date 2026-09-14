@@ -4,7 +4,10 @@ import { jsonError } from "@/lib/utils";
 import { matchProperties } from "@/lib/matching";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { serializeProperty } from "@/lib/property-query";
+import { grantPriceAccess } from "@/lib/price-access";
 import { TransactionType } from "@prisma/client";
+
+const phoneRegex = /^(?:\+91[\s-]?|91[\s-]?|0)?[6-9]\d{9}$/;
 
 const schema = z.object({
   propertyTypes: z.array(z.string()).min(1, "Select at least one property type"),
@@ -17,7 +20,7 @@ const schema = z.object({
   maxArea: z.number().nullable().optional(),
   timeline: z.string().nullable().optional(),
   name: z.string().min(2),
-  phone: z.string().min(8),
+  phone: z.string().regex(phoneRegex, "Enter a valid Indian mobile number"),
   email: z.string().email(),
   whatsapp: z.string().optional(),
   consent: z.boolean(),
@@ -41,31 +44,55 @@ export async function POST(req: Request) {
   });
   const categories = [...new Set(types.map((t) => t.category))].join(",");
 
-  const lead = await prisma.lead.create({
-    data: {
-      name: parsed.data.name,
-      phone: parsed.data.phone,
-      email: parsed.data.email.toLowerCase(),
-      whatsapp: parsed.data.whatsapp || parsed.data.phone,
-      consent: parsed.data.consent,
-      preference: {
-        create: {
-          categories,
-          propertyTypes: parsed.data.propertyTypes.join(","),
-          transactionType: parsed.data.transactionType as TransactionType,
-          locationSlugs: parsed.data.locationSlugs.join(","),
-          minBudget: parsed.data.minBudget ?? null,
-          maxBudget: parsed.data.maxBudget ?? null,
-          bedrooms: parsed.data.bedrooms?.join(",") ?? null,
-          minArea: parsed.data.minArea ?? null,
-          maxArea: parsed.data.maxArea ?? null,
-          timeline: parsed.data.timeline ?? null,
-        },
-      },
-    },
+  const email = parsed.data.email.toLowerCase();
+  const phone = parsed.data.phone.replace(/[\s-]/g, "");
+  const preference = {
+    categories,
+    propertyTypes: parsed.data.propertyTypes.join(","),
+    transactionType: parsed.data.transactionType as TransactionType,
+    locationSlugs: parsed.data.locationSlugs.join(","),
+    minBudget: parsed.data.minBudget ?? null,
+    maxBudget: parsed.data.maxBudget ?? null,
+    bedrooms: parsed.data.bedrooms?.join(",") ?? null,
+    minArea: parsed.data.minArea ?? null,
+    maxArea: parsed.data.maxArea ?? null,
+    timeline: parsed.data.timeline ?? null,
+  };
+  const existing = await prisma.lead.findFirst({
+    where: { OR: [{ email }, { phone }] },
+    include: { preference: true },
+    orderBy: { updatedAt: "desc" },
   });
 
+  const lead = existing
+    ? await prisma.lead.update({
+        where: { id: existing.id },
+        data: {
+          name: parsed.data.name,
+          phone,
+          email,
+          whatsapp: parsed.data.whatsapp || phone,
+          consent: parsed.data.consent,
+          source: "MATCHER",
+          preference: existing.preference
+            ? { update: preference }
+            : { create: preference },
+        },
+      })
+    : await prisma.lead.create({
+        data: {
+          name: parsed.data.name,
+          phone,
+          email,
+          whatsapp: parsed.data.whatsapp || phone,
+          consent: parsed.data.consent,
+          source: "MATCHER",
+          preference: { create: preference },
+        },
+      });
+
   const matches = await matchProperties(parsed.data);
+  await prisma.propertyMatch.deleteMany({ where: { leadId: lead.id } });
   if (matches.length) {
     await prisma.propertyMatch.createMany({
       data: matches.map((m) => ({
@@ -75,9 +102,12 @@ export async function POST(req: Request) {
       })),
     });
   }
+  await grantPriceAccess(lead.id);
 
   return Response.json({
     leadId: lead.id,
-    matches: matches.map((m) => ({ ...serializeProperty(m), score: m.score })),
+    matches: matches.map((m) => ({ ...serializeProperty(m, true), score: m.score })),
+  }, {
+    headers: { "Cache-Control": "private, no-store" },
   });
 }

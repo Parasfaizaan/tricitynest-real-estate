@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 export function ContactForm() {
+  const router = useRouter();
   const [status, setStatus] = useState("");
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -19,8 +21,11 @@ export function ContactForm() {
         message: fd.get("message"),
       }),
     });
-    setStatus(res.ok ? "Message sent." : "Could not send.");
-    if (res.ok) e.currentTarget.reset();
+    setStatus(res.ok ? "Message sent. Property prices are now unlocked." : "Could not send.");
+    if (res.ok) {
+      e.currentTarget.reset();
+      router.refresh();
+    }
   }
   return (
     <form onSubmit={onSubmit} className="card-surface grid gap-3 p-6">

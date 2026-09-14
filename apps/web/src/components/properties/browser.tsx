@@ -2,9 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PropertyCard, type CardProperty } from "@/components/property/card";
 import { Button } from "@/components/ui/button";
 import { SlidersHorizontal, X } from "lucide-react";
+import { Stagger, StaggerItem } from "@/components/motion/reveal";
+import { motionDurations, motionEase } from "@/components/motion/variants";
 
 type Loc = { name: string; slug: string };
 type Type = { name: string; slug: string; category: string };
@@ -27,6 +30,7 @@ export function PropertiesBrowser({
   filters: Record<string, string | undefined>;
 }) {
   const router = useRouter();
+  const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     transaction: filters.transaction ?? "",
@@ -145,11 +149,13 @@ export function PropertiesBrowser({
             {initial.length === 0 ? (
               <div className="card-surface p-12 text-center text-ink-soft">No properties match these filters.</div>
             ) : (
-              <div className="grid gap-6 sm:grid-cols-2">
+              <Stagger className="grid gap-6 sm:grid-cols-2">
                 {initial.map((p) => (
-                  <PropertyCard key={p.slug} property={p} />
+                  <StaggerItem key={p.slug}>
+                    <PropertyCard property={p} />
+                  </StaggerItem>
                 ))}
-              </div>
+              </Stagger>
             )}
             {pages > 1 && (
               <div className="mt-10 flex justify-center gap-2">
@@ -167,9 +173,22 @@ export function PropertiesBrowser({
           </div>
         </div>
       </div>
+      <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 bg-navy/50 p-4 lg:hidden">
-          <div className="ml-auto h-full max-w-sm overflow-y-auto rounded-[22px] bg-white p-5">
+        <motion.div
+          className="fixed inset-0 z-50 bg-navy/50 p-4 backdrop-blur-sm lg:hidden"
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={reduce ? undefined : { opacity: 0 }}
+          transition={{ duration: motionDurations.button, ease: motionEase }}
+        >
+          <motion.div
+            className="ml-auto h-full max-w-sm overflow-y-auto rounded-[22px] bg-white p-5"
+            initial={reduce ? false : { opacity: 0, x: 28 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={reduce ? undefined : { opacity: 0, x: 24 }}
+            transition={{ duration: motionDurations.modal, ease: motionEase }}
+          >
             <div className="mb-4 flex items-center justify-between">
               <p className="font-semibold">Filters</p>
               <button onClick={() => setOpen(false)} aria-label="Close filters" className="grid h-11 w-11 place-items-center">
@@ -177,9 +196,10 @@ export function PropertiesBrowser({
               </button>
             </div>
             {FilterFields}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
