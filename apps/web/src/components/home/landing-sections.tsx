@@ -128,7 +128,7 @@ export function LocationsGrid({
           <h2 className="text-[clamp(1.75rem,3vw,2.5rem)] font-bold tracking-tight">Explore By Cities</h2>
         </Reveal>
         <Stagger className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {locations.map((l) => (
+          {locations.slice(0, 6).map((l) => (
             <StaggerItem key={l.slug}>
               <Link
                 href={`/properties/${l.slug}`}
