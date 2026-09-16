@@ -31,8 +31,8 @@ export function HomeExperience({
       }} />
       <TrustMetrics count={count} />
       <FeaturedRow properties={featured} />
-      <WhyUs />
       <LocationsGrid locations={locations} />
+      <WhyUs />
       <Testimonials />
       <AboutTeaser />
       <ConsultationForm />

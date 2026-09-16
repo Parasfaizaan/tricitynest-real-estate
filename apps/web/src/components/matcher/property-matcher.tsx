@@ -1,28 +1,22 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
-  BedDouble,
-  BriefcaseBusiness,
-  Building,
   Building2,
-  CalendarClock,
+  CalendarDays,
   Check,
   Home,
-  House,
   IndianRupee,
-  LandPlot,
   Mail,
   MapPin,
-  PanelsTopLeft,
   Phone,
   Ruler,
-  ShoppingBag,
-  Store,
+  Search,
   UserRound,
   X,
   type LucideIcon,
@@ -34,9 +28,6 @@ type Tax = {
   propertyTypes: { name: string; slug: string; category: string }[];
 };
 
-const STORAGE_KEY = "tn_matcher_state";
-const CLOSED_KEY = "tn_matcher_closed";
-
 type State = {
   step: number;
   propertyCategory: "RESIDENTIAL" | "COMMERCIAL" | "";
@@ -47,8 +38,7 @@ type State = {
   minBudget: string;
   maxBudget: string;
   bedrooms: number[];
-  minArea: string;
-  maxArea: string;
+  sizeUnit: "any" | "sqft" | "sqyd" | "sqm";
   timeline: string;
   name: string;
   phone: string;
@@ -57,6 +47,11 @@ type State = {
   consent: boolean;
 };
 
+const STORAGE_KEY = "tn_matcher_state";
+const CLOSED_KEY = "tn_matcher_closed";
+const TOTAL_STEPS = 3;
+const phoneRegex = /^(?:\+91[\s-]?|91[\s-]?|0)?[6-9]\d{9}$/;
+
 const empty: State = {
   step: 1,
   propertyCategory: "",
@@ -64,12 +59,11 @@ const empty: State = {
   transactionType: "",
   locationSlugs: [],
   locQuery: "",
-  minBudget: "",
-  maxBudget: "",
+  minBudget: "1000000",
+  maxBudget: "100000000",
   bedrooms: [],
-  minArea: "",
-  maxArea: "",
-  timeline: "",
+  sizeUnit: "any",
+  timeline: "Immediately",
   name: "",
   phone: "",
   email: "",
@@ -77,42 +71,47 @@ const empty: State = {
   consent: false,
 };
 
-const timelines = ["Immediately", "Within 1 month", "1-3 months", "3-6 months", "Just exploring"];
-const phoneRegex = /^(?:\+91[\s-]?|91[\s-]?|0)?[6-9]\d{9}$/;
-const TOTAL_STEPS = 6;
+const steps = ["Property Details", "Location & Preferences", "Your Details"];
+const timelines = ["Immediately", "Within 1 month", "1-3 months", "Later"];
+const budgetConfig = { min: 1_000_000, max: 100_000_000, step: 500_000 };
 
-const budgetConfigs = {
-  BUY: { min: 1_000_000, max: 100_000_000, step: 500_000 },
-  INVEST: { min: 1_000_000, max: 100_000_000, step: 500_000 },
-  RENT: { min: 10_000, max: 500_000, step: 5_000 },
-} as const;
+const sidePanels = [
+  {
+    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85",
+    title: "Every\nproperty tells\na new story.",
+    copy: "Tell us what you're looking for and we'll find the right matches for you.",
+  },
+  {
+    image: "https://images.pexels.com/photos/7412069/pexels-photo-7412069.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    title: "Find the\nright location,\nfor a brighter\ntomorrow.",
+    copy: "Choose your preferred location and set your preferences to see the most relevant properties.",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=85",
+    title: "Almost there!",
+    copy: "Share a few details and we'll show you the best matching properties.",
+  },
+];
 
-const areaConfigs = {
-  RESIDENTIAL: { min: 250, max: 10_000, step: 50 },
-  COMMERCIAL: { min: 100, max: 50_000, step: 100 },
-} as const;
-
-const bedroomTypes = new Set(["apartment", "builder-floor", "villa"]);
-
-const stepIcons: Record<number, LucideIcon> = {
-  1: Home,
-  2: Building2,
-  3: BriefcaseBusiness,
-  4: MapPin,
-  5: IndianRupee,
-  6: UserRound,
+const typeImages: Record<string, string> = {
+  apartment: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=500&q=80",
+  "builder-floor": "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=500&q=80",
+  villa: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=500&q=80",
+  plot: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=500&q=80",
+  "commercial-plot": "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=500&q=80",
+  office: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=500&q=80",
+  showroom: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=500&q=80",
+  shop: "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?auto=format&fit=crop&w=500&q=80",
+  sco: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=500&q=80",
 };
 
-const typeIcons: Record<string, LucideIcon> = {
-  apartment: Building2,
-  "builder-floor": PanelsTopLeft,
-  villa: House,
-  plot: LandPlot,
-  sco: Store,
-  shop: ShoppingBag,
-  showroom: Store,
-  office: BriefcaseBusiness,
-  "commercial-plot": LandPlot,
+const locationImages: Record<string, string> = {
+  mohali: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&q=80",
+  chandigarh: "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=400&q=80",
+  zirakpur: "https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=400&q=80",
+  kharar: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=400&q=80",
+  "new-chandigarh": "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=400&q=80",
+  derabassi: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=400&q=80",
 };
 
 export function PropertyMatcher({
@@ -152,12 +151,22 @@ export function PropertyMatcher({
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  const availableTypes = useMemo(
+    () => taxonomies.propertyTypes.filter((type) => type.category === (state.propertyCategory || "RESIDENTIAL")).slice(0, 4),
+    [state.propertyCategory, taxonomies.propertyTypes]
+  );
+
+  const filteredLocations = useMemo(() => {
+    const query = state.locQuery.toLowerCase();
+    return taxonomies.locations.filter((location) => location.name.toLowerCase().includes(query)).slice(0, 6);
+  }, [state.locQuery, taxonomies.locations]);
 
   function handleClose() {
     try {
@@ -166,73 +175,46 @@ export function PropertyMatcher({
     onClose();
   }
 
-  const residential = taxonomies.propertyTypes.filter((t) => t.category === "RESIDENTIAL");
-  const commercial = taxonomies.propertyTypes.filter((t) => t.category === "COMMERCIAL");
-  const availableTypes = state.propertyCategory === "COMMERCIAL" ? commercial : residential;
-  const isResidential = state.propertyCategory === "RESIDENTIAL";
-  const showBhk = isResidential && state.propertyTypes.some((slug) => bedroomTypes.has(slug));
-
-  const filteredLocs = useMemo(() => {
-    const q = state.locQuery.toLowerCase();
-    return taxonomies.locations.filter((l) => l.name.toLowerCase().includes(q));
-  }, [taxonomies.locations, state.locQuery]);
-
-  function toggle(list: string[] | number[], value: string | number) {
-    return list.includes(value as never)
-      ? list.filter((v) => v !== value)
-      : [...list, value as never];
+  function setStep(step: number) {
+    setError("");
+    setDir(step > state.step ? 1 : -1);
+    setState((current) => ({ ...current, step }));
   }
 
   function chooseCategory(propertyCategory: State["propertyCategory"]) {
     setError("");
-    setState((s) => ({
-      ...s,
+    setState((current) => ({
+      ...current,
       propertyCategory,
-      propertyTypes: s.propertyCategory === propertyCategory ? s.propertyTypes : [],
-      bedrooms: propertyCategory === "RESIDENTIAL" ? s.bedrooms : [],
-    }));
-  }
-
-  function chooseTransaction(transactionType: State["transactionType"]) {
-    const nextBudget = budgetConfigs[transactionType || "BUY"];
-    setState((s) => ({
-      ...s,
-      transactionType,
-      minBudget: String(nextBudget.min),
-      maxBudget: String(nextBudget.max),
+      propertyTypes: current.propertyCategory === propertyCategory ? current.propertyTypes : [],
+      bedrooms: propertyCategory === "RESIDENTIAL" ? current.bedrooms : [],
     }));
   }
 
   function chooseType(slug: string) {
-    setState((s) => {
-      const nextTypes = toggle(s.propertyTypes, slug) as string[];
-      return {
-        ...s,
-        propertyTypes: nextTypes,
-        bedrooms: s.propertyCategory === "RESIDENTIAL" && nextTypes.some((type) => bedroomTypes.has(type)) ? s.bedrooms : [],
-      };
-    });
+    setState((current) => ({ ...current, propertyTypes: [slug] }));
   }
 
-  function go(nextStep: number) {
-    setError("");
-    setDir(nextStep > state.step ? 1 : -1);
-    setState((s) => ({ ...s, step: nextStep }));
+  function chooseTransaction(transactionType: State["transactionType"]) {
+    setState((current) => ({
+      ...current,
+      transactionType,
+      minBudget: transactionType === "RENT" ? "10000" : "1000000",
+      maxBudget: transactionType === "RENT" ? "500000" : "100000000",
+    }));
   }
 
   function validate() {
-    if (state.step === 1 && !state.propertyCategory) return "Select one option.";
-    if (state.step === 2 && state.propertyTypes.length === 0) return "Select at least one property type.";
-    if (state.step === 3 && !state.transactionType) return "Choose buy, rent or invest.";
-    if (state.step === 4 && state.locationSlugs.length === 0) return "Select at least one location.";
-    if (state.step === 5) {
-      const budget = getBudgetValues(state);
-      const area = getAreaValues(state);
-      if (budget[0] > budget[1]) return "Minimum budget cannot exceed maximum budget.";
-      if (area[0] > area[1]) return "Minimum area cannot exceed maximum area.";
-      if (!state.timeline) return "Pick a timeline.";
+    if (state.step === 1) {
+      if (!state.propertyCategory) return "Select a property category.";
+      if (state.propertyTypes.length === 0) return "Select a property type.";
+      if (!state.transactionType) return "Choose buy, rent or invest.";
     }
-    if (state.step === 6) {
+    if (state.step === 2) {
+      if (state.locationSlugs.length === 0) return "Select at least one location.";
+      if (Number(state.minBudget) > Number(state.maxBudget)) return "Minimum budget cannot exceed maximum budget.";
+    }
+    if (state.step === 3) {
       if (state.name.trim().length < 2) return "Enter your full name.";
       if (!phoneRegex.test(state.phone.trim())) return "Enter a valid Indian mobile number.";
       if (!state.email.includes("@")) return "Enter a valid email.";
@@ -242,18 +224,19 @@ export function PropertyMatcher({
   }
 
   async function next() {
-    const msg = validate();
-    if (msg) {
-      setError(msg);
+    const message = validate();
+    if (message) {
+      setError(message);
       return;
     }
     if (state.step < TOTAL_STEPS) {
-      go(state.step + 1);
+      setStep(state.step + 1);
       return;
     }
+
     setBusy(true);
     setError("");
-    const res = await fetch("/api/matcher", {
+    const response = await fetch("/api/matcher", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -263,8 +246,8 @@ export function PropertyMatcher({
         minBudget: state.minBudget ? Number(state.minBudget) : null,
         maxBudget: state.maxBudget ? Number(state.maxBudget) : null,
         bedrooms: state.bedrooms,
-        minArea: state.minArea ? Number(state.minArea) : null,
-        maxArea: state.maxArea ? Number(state.maxArea) : null,
+        minArea: null,
+        maxArea: null,
         timeline: state.timeline,
         name: state.name,
         phone: state.phone,
@@ -273,9 +256,9 @@ export function PropertyMatcher({
         consent: state.consent,
       }),
     });
-    const data = await res.json();
+    const data = await response.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok) {
+    if (!response.ok) {
       setError(data.error || "Could not save matches.");
       return;
     }
@@ -290,399 +273,401 @@ export function PropertyMatcher({
 
   if (!open) return null;
 
-  const typeName = (slug: string) => taxonomies.propertyTypes.find((t) => t.slug === slug)?.name ?? slug;
-  const locName = (slug: string) => taxonomies.locations.find((l) => l.slug === slug)?.name ?? slug;
-  const StepIcon = stepIcons[state.step] ?? Home;
+  const panel = sidePanels[state.step - 1];
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="matcher-title">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-navy/70 p-2 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="matcher-title">
       <motion.button
         type="button"
         aria-label="Close overlay"
-        className="absolute inset-0 bg-[rgba(16,37,31,0.76)] backdrop-blur-[12px]"
+        className="absolute inset-0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.22 }}
         onClick={handleClose}
       />
       <motion.div
-        initial={reduce ? false : { opacity: 0, y: 10, scale: 0.97 }}
+        initial={reduce ? false : { opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={reduce ? undefined : { opacity: 0, y: 8, scale: 0.98 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 max-h-[calc(100dvh-24px)] w-[min(690px,calc(100vw-24px))] overflow-y-auto rounded-[24px] border border-ice/15 bg-navy px-5 py-5 text-white shadow-[0_28px_90px_rgba(0,0,0,0.34)] [scrollbar-color:rgba(214,168,90,0.42)_transparent] [scrollbar-width:thin] sm:max-h-[calc(100vh-64px)] sm:w-[min(690px,calc(100vw-48px))] sm:px-11 sm:py-10"
+        exit={reduce ? undefined : { opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.25 }}
+        className="relative z-10 grid max-h-[calc(100dvh-14px)] w-[min(1180px,calc(100vw-12px))] overflow-hidden rounded-[18px] border border-navy/20 bg-white text-navy shadow-[0_30px_90px_rgba(0,0,0,0.38)] md:grid-cols-[380px_1fr]"
       >
-        <button
-          ref={closeRef}
-          onClick={handleClose}
-          className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-white/[0.03] text-white/80 transition hover:border-ice/30 hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice sm:right-5 sm:top-5"
-          aria-label="Close questionnaire"
-        >
-          <X size={20} />
-        </button>
+        <aside className="relative hidden min-h-[680px] overflow-hidden md:block">
+          <Image src={panel.image} alt="" fill className="object-cover" priority />
+          <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/45 to-transparent" />
+          <div className="absolute bottom-10 left-9 right-9 text-white">
+            <div className="mb-6 h-1 w-16 rounded-full bg-ice" />
+            <p className="display whitespace-pre-line text-[2.15rem] leading-[0.98]">{panel.title}</p>
+            <p className="mt-7 max-w-[250px] text-sm leading-6 text-white/82">{panel.copy}</p>
+          </div>
+        </aside>
 
-        <div className="flex gap-1.5 pr-14">
-          {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((n) => (
-            <div key={n} className="h-[5px] flex-1 overflow-hidden rounded-full bg-white/10">
-              <motion.div
-                className="h-full rounded-full bg-ice"
-                initial={false}
-                animate={{ width: n <= state.step ? "100%" : "0%" }}
-                transition={{ duration: 0.28 }}
-              />
-            </div>
-          ))}
-        </div>
+        <section className="relative max-h-[calc(100dvh-14px)] overflow-y-auto px-5 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-8 md:px-12 md:py-7">
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={handleClose}
+            className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-navy/65 transition hover:bg-page hover:text-navy"
+            aria-label="Close questionnaire"
+          >
+            <X size={21} />
+          </button>
 
-        <div className="mt-8">
+          <Stepper step={state.step} />
+
           <AnimatePresence mode="wait" custom={dir}>
             <motion.div
               key={state.step}
               custom={dir}
-              initial={reduce ? false : { opacity: 0, x: dir > 0 ? 20 : -20 }}
+              initial={reduce ? false : { opacity: 0, x: dir > 0 ? 18 : -18 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={reduce ? undefined : { opacity: 0, x: dir > 0 ? -20 : 20 }}
-              transition={{ duration: 0.24 }}
+              exit={reduce ? undefined : { opacity: 0, x: dir > 0 ? -18 : 18 }}
+              transition={{ duration: 0.2 }}
+              className="mt-8"
             >
               {state.step === 1 && (
-                <CenteredStep
-                  icon={StepIcon}
-                  step={state.step}
-                  title="What type of property are you interested in?"
-                  description="Select one option"
-                >
-                  <div className="mx-auto mt-8 grid max-w-[560px] gap-4 sm:grid-cols-2">
-                    <CategoryCard
-                      icon={Home}
-                      title="Residential"
-                      description="Villas, flats, and residential plots"
-                      active={state.propertyCategory === "RESIDENTIAL"}
-                      onClick={() => chooseCategory("RESIDENTIAL")}
-                    />
-                    <CategoryCard
-                      icon={Building2}
-                      title="Commercial"
-                      description="SCOs, showrooms, and commercial plots"
-                      active={state.propertyCategory === "COMMERCIAL"}
-                      onClick={() => chooseCategory("COMMERCIAL")}
-                    />
-                  </div>
-                </CenteredStep>
+                <StepOne
+                  state={state}
+                  types={availableTypes}
+                  onCategory={chooseCategory}
+                  onType={chooseType}
+                  onTransaction={chooseTransaction}
+                />
               )}
-
               {state.step === 2 && (
-                <CenteredStep
-                  icon={StepIcon}
-                  step={state.step}
-                  title={`Choose ${state.propertyCategory === "COMMERCIAL" ? "commercial" : "residential"} property types`}
-                  description="Select one or more options"
-                >
-                  <div className="mx-auto mt-7 grid max-w-[560px] gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {availableTypes.map((t) => {
-                      const Icon = typeIcons[t.slug] ?? Building;
-                      return (
-                        <Choice
-                          key={t.slug}
-                          icon={Icon}
-                          compact
-                          active={state.propertyTypes.includes(t.slug)}
-                          onClick={() => chooseType(t.slug)}
-                        >
-                          {t.name}
-                        </Choice>
-                      );
-                    })}
-                  </div>
-                </CenteredStep>
+                <StepTwo
+                  state={state}
+                  locations={filteredLocations}
+                  onChange={(patch) => setState((current) => ({ ...current, ...patch }))}
+                />
               )}
-
               {state.step === 3 && (
-                <CenteredStep
-                  icon={StepIcon}
-                  step={state.step}
-                  title="What are you looking to do?"
-                  description="Choose the transaction type"
-                >
-                  <div className="mx-auto mt-7 grid max-w-[520px] gap-3 sm:grid-cols-3">
-                    {(["BUY", "RENT", "INVEST"] as const).map((v) => (
-                      <Choice
-                        key={v}
-                        active={state.transactionType === v}
-                        onClick={() => chooseTransaction(v)}
-                      >
-                        {v === "BUY" ? "Buy" : v === "RENT" ? "Rent" : "Invest"}
-                      </Choice>
-                    ))}
-                  </div>
-                </CenteredStep>
-              )}
-
-              {state.step === 4 && (
-                <>
-                  <StepHeader icon={StepIcon} step={state.step} title="Where should we look?" description="Choose one or more locations that work for you." />
-                  <div className="mt-6">
-                    <input
-                      className="bg-white/5 text-white"
-                      placeholder="Search locations"
-                      value={state.locQuery}
-                      onChange={(e) => setState((s) => ({ ...s, locQuery: e.target.value }))}
-                    />
-                    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                      {filteredLocs.map((l) => (
-                        <Choice key={l.slug} icon={MapPin} compact active={state.locationSlugs.includes(l.slug)} onClick={() => setState((s) => ({ ...s, locationSlugs: toggle(s.locationSlugs, l.slug) as string[] }))}>
-                          {l.name}
-                        </Choice>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {state.step === 5 && (
-                <>
-                  <StepHeader icon={StepIcon} step={state.step} title="What's your ideal property range?" description="Set your budget and preferences so we can narrow the results." />
-                  <div className="mt-6 grid gap-6">
-                    <RangeSection
-                      icon={IndianRupee}
-                      title="Budget range"
-                      minLabel="Minimum budget"
-                      maxLabel="Maximum budget"
-                      config={budgetConfigs[state.transactionType || "BUY"]}
-                      value={getBudgetValues(state)}
-                      format={formatBudget}
-                      onChange={([min, max]) => setState((s) => ({ ...s, minBudget: String(min), maxBudget: String(max) }))}
-                    />
-                    {showBhk && (
-                      <div>
-                        <SectionLabel icon={BedDouble}>BHK</SectionLabel>
-                        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <Pill key={n} active={state.bedrooms.includes(n)} onClick={() => setState((s) => ({ ...s, bedrooms: toggle(s.bedrooms, n) as number[] }))}>
-                              {n === 5 ? "5+ BHK" : `${n} BHK`}
-                            </Pill>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <RangeSection
-                      icon={Ruler}
-                      title="Area"
-                      minLabel="Minimum area"
-                      maxLabel="Maximum area"
-                      config={areaConfigs[state.propertyCategory || "RESIDENTIAL"]}
-                      value={getAreaValues(state)}
-                      format={formatAreaRange}
-                      onChange={([min, max]) => setState((s) => ({ ...s, minArea: String(min), maxArea: String(max) }))}
-                    />
-                    <div>
-                      <SectionLabel icon={CalendarClock}>Preferred timeline</SectionLabel>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                        {timelines.map((t) => (
-                          <Pill key={t} active={state.timeline === t} onClick={() => setState((s) => ({ ...s, timeline: t }))}>
-                            {t}
-                          </Pill>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {state.step === 6 && (
-                <>
-                  <StepHeader icon={StepIcon} step={state.step} title="Where should we send your matches?" description="Your details also unlock property prices instantly" />
-                  <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-                    {state.propertyTypes.map(typeName).join(", ")} - {state.transactionType} - {state.locationSlugs.map(locName).join(", ")}
-                    {state.maxBudget ? ` - up to Rs ${Number(state.maxBudget).toLocaleString("en-IN")}` : ""}
-                  </div>
-                  <div className="mt-5 grid gap-3">
-                    <IconInput icon={UserRound} placeholder="Full name" value={state.name} onChange={(value) => setState((s) => ({ ...s, name: value }))} />
-                    <IconInput icon={Phone} placeholder="Phone" value={state.phone} onChange={(value) => setState((s) => ({ ...s, phone: value }))} />
-                    <IconInput icon={Mail} placeholder="Email" value={state.email} onChange={(value) => setState((s) => ({ ...s, email: value }))} />
-                    <CheckRow checked={state.whatsappSame} onChange={(checked) => setState((s) => ({ ...s, whatsappSame: checked }))}>
-                      WhatsApp same as phone
-                    </CheckRow>
-                    <CheckRow checked={state.consent} onChange={(checked) => setState((s) => ({ ...s, consent: checked }))}>
-                      I agree to be contacted about matching properties. Nobody calls until I ask.
-                    </CheckRow>
-                  </div>
-                </>
+                <StepThree
+                  state={state}
+                  onChange={(patch) => setState((current) => ({ ...current, ...patch }))}
+                />
               )}
             </motion.div>
           </AnimatePresence>
-        </div>
 
-        {error && <p className="mt-5 text-center text-sm text-red-300">{error}</p>}
+          {error && <p className="mt-4 text-sm font-medium text-red-600">{error}</p>}
 
-        <div className={cn("mt-7 flex items-center gap-3", state.step === 1 ? "justify-center" : "justify-between")}>
-          {state.step > 1 && (
+          <div className="mt-8 flex items-center justify-between">
+            {state.step > 1 ? (
+              <button type="button" onClick={() => setStep(state.step - 1)} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-navy/75 transition hover:text-navy">
+                <ArrowLeft size={16} />
+                Back
+              </button>
+            ) : (
+              <span />
+            )}
             <button
               type="button"
-              className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm text-white/70 transition hover:text-white disabled:opacity-30"
-              onClick={() => go(state.step - 1)}
+              onClick={next}
+              disabled={busy}
+              className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-navy px-8 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-navy-2 disabled:bg-navy/35"
             >
-              <ArrowLeft size={16} />
-              Back
+              {state.step === TOTAL_STEPS ? (busy ? "Finding..." : "Find My Matches") : "Next"}
+              <ArrowRight size={17} />
             </button>
-          )}
-          <button
-            type="button"
-            onClick={next}
-            disabled={busy}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-ice px-7 text-sm font-semibold text-navy transition hover:-translate-y-0.5 hover:bg-ice-2 active:translate-y-0 disabled:bg-white/15 disabled:text-white/45"
-          >
-            {state.step === TOTAL_STEPS ? (busy ? "Matching..." : "Show my matches") : "Continue"}
-            <ArrowRight size={16} />
-          </button>
-        </div>
+          </div>
+        </section>
       </motion.div>
     </div>
   );
 }
 
-function StepHeader({
-  icon: Icon,
-  step,
-  title,
-  description,
+function Stepper({ step }: { step: number }) {
+  return (
+    <div className="flex items-center pr-10 text-[11px] font-semibold text-ink-soft">
+      {steps.map((label, index) => {
+        const number = index + 1;
+        const active = number === step;
+        const complete = number < step;
+        return (
+          <div key={label} className="flex flex-1 items-center last:flex-none">
+            <div className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full border text-xs", active ? "border-navy bg-navy text-white" : complete ? "border-navy/35 bg-white text-navy" : "border-line bg-white text-ink-soft/60")}>
+              {complete ? <Check size={15} /> : String(number).padStart(2, "0")}
+            </div>
+            <span className={cn("ml-2 hidden sm:inline", active ? "text-navy" : "text-ink-soft/60")}>{label}</span>
+            {number < TOTAL_STEPS && <span className="mx-3 h-px flex-1 bg-line" />}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StepOne({
+  state,
+  types,
+  onCategory,
+  onType,
+  onTransaction,
 }: {
-  icon: LucideIcon;
-  step: number;
-  title: string;
-  description: string;
+  state: State;
+  types: { name: string; slug: string; category: string }[];
+  onCategory: (value: State["propertyCategory"]) => void;
+  onType: (value: string) => void;
+  onTransaction: (value: State["transactionType"]) => void;
 }) {
   return (
-    <div className="text-center">
-      <div className="mx-auto grid h-[50px] w-[50px] place-items-center rounded-[15px] border border-ice/30 bg-ice/10 text-ice">
-        <Icon size={21} />
+    <>
+      <Heading title="What type of property are you looking for?" description="Select the property category and type that fits your needs." />
+      <FieldTitle>Property Category</FieldTitle>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <CategoryCard icon={Home} title="Residential" description="Homes, apartments, villas and more" active={state.propertyCategory === "RESIDENTIAL"} onClick={() => onCategory("RESIDENTIAL")} />
+        <CategoryCard icon={Building2} title="Commercial" description="Offices, showrooms, shops and more" active={state.propertyCategory === "COMMERCIAL"} onClick={() => onCategory("COMMERCIAL")} />
       </div>
-      <p className="mt-5 text-[0.72rem] font-bold uppercase tracking-[0.06em] text-ice">Question {step} of {TOTAL_STEPS}</p>
-      <h2 id={step === 1 ? "matcher-title" : undefined} className="display mx-auto mt-3 max-w-[500px] text-[1.55rem] leading-[1.08] text-white sm:text-[2rem]">
-        {title}
-      </h2>
-      <p className="mt-2 text-sm text-white/55">{description}</p>
+
+      <FieldTitle className="mt-6">Property Type</FieldTitle>
+      <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {types.map((type) => (
+          <ImageOption
+            key={type.slug}
+            title={type.name}
+            image={typeImages[type.slug] ?? typeImages.apartment}
+            active={state.propertyTypes.includes(type.slug)}
+            onClick={() => onType(type.slug)}
+          />
+        ))}
+      </div>
+
+      <FieldTitle className="mt-6">Purpose</FieldTitle>
+      <Segmented
+        value={state.transactionType}
+        options={[
+          ["BUY", "Buy"],
+          ["RENT", "Rent"],
+          ["INVEST", "Invest"],
+        ]}
+        onChange={(value) => onTransaction(value as State["transactionType"])}
+      />
+    </>
+  );
+}
+
+function StepTwo({
+  state,
+  locations,
+  onChange,
+}: {
+  state: State;
+  locations: { name: string; slug: string }[];
+  onChange: (patch: Partial<State>) => void;
+}) {
+  const budget = getBudgetValues(state);
+  return (
+    <>
+      <Heading title="Where would you like to look?" description="Search for a city, area or locality" />
+      <label className="relative mt-5 block">
+        <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-soft" size={18} />
+        <input value={state.locQuery} onChange={(event) => onChange({ locQuery: event.target.value })} placeholder="Search location (e.g. Chandigarh, Mohali)" className="rounded-xl !pl-12" />
+      </label>
+
+      <FieldTitle className="mt-6">Popular Locations</FieldTitle>
+      <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
+        {locations.map((location) => (
+          <LocationOption
+            key={location.slug}
+            location={location}
+            active={state.locationSlugs.includes(location.slug)}
+            onClick={() => onChange({ locationSlugs: toggle(state.locationSlugs, location.slug) })}
+          />
+        ))}
+      </div>
+
+      <div className="mt-7 grid gap-7 lg:grid-cols-2">
+        <div>
+          <SectionLabel icon={IndianRupee}>Budget Range</SectionLabel>
+          <DualRange value={budget} onChange={([minBudget, maxBudget]) => onChange({ minBudget: String(minBudget), maxBudget: String(maxBudget) })} />
+        </div>
+        <div>
+          <SectionLabel icon={Ruler}>Property Size <span className="font-normal text-ink-soft">(Optional)</span></SectionLabel>
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {[
+              ["any", "Any"],
+              ["sqft", "Sq. Ft."],
+              ["sqyd", "Sq. Yd."],
+              ["sqm", "Sq. M."],
+            ].map(([value, label]) => (
+              <SmallPill key={value} active={state.sizeUnit === value} onClick={() => onChange({ sizeUnit: value as State["sizeUnit"] })}>{label}</SmallPill>
+            ))}
+          </div>
+        </div>
+        <div>
+          <SectionLabel icon={Home}>BHK <span className="font-normal text-ink-soft">(Optional)</span></SectionLabel>
+          <div className="mt-3 grid grid-cols-6 gap-2">
+            {[0, 1, 2, 3, 4, 5].map((n) => (
+              <SmallPill key={n} active={n === 0 ? state.bedrooms.length === 0 : state.bedrooms.includes(n)} onClick={() => onChange({ bedrooms: n === 0 ? [] : toggle(state.bedrooms, n) })}>
+                {n === 0 ? "Any" : n === 5 ? "5+" : n}
+              </SmallPill>
+            ))}
+          </div>
+        </div>
+        <div>
+          <SectionLabel icon={CalendarDays}>Preferred Timeline <span className="font-normal text-ink-soft">(Optional)</span></SectionLabel>
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {timelines.map((timeline) => (
+              <SmallPill key={timeline} active={state.timeline === timeline} onClick={() => onChange({ timeline })}>{timeline}</SmallPill>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function StepThree({ state, onChange }: { state: State; onChange: (patch: Partial<State>) => void }) {
+  return (
+    <>
+      <Heading title="Tell us about yourself" description="Get personalized matches and expert assistance." />
+      <div className="mt-6 grid gap-4">
+        <TextInput label="Full Name" required icon={UserRound} value={state.name} placeholder="John Doe" onChange={(name) => onChange({ name })} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextInput label="Phone Number" required icon={Phone} value={state.phone} placeholder="98765 43210" prefix="+91" onChange={(phone) => onChange({ phone })} />
+          <TextInput label="Email Address" required icon={Mail} value={state.email} placeholder="you@example.com" onChange={(email) => onChange({ email })} />
+        </div>
+        <CheckRow checked={state.whatsappSame} onChange={(whatsappSame) => onChange({ whatsappSame })}>
+          Send updates on WhatsApp (same as phone number)
+        </CheckRow>
+        <CheckRow checked={state.consent} onChange={(consent) => onChange({ consent })}>
+          I agree to be contacted about matching properties. Nobody calls until I ask.
+        </CheckRow>
+      </div>
+    </>
+  );
+}
+
+function Heading({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <h2 id="matcher-title" className="display max-w-[520px] text-[clamp(1.9rem,3vw,2.65rem)] leading-[1.02] text-navy">{title}</h2>
+      <p className="mt-2 text-sm text-ink-soft">{description}</p>
     </div>
   );
 }
 
-function CenteredStep({
-  icon,
-  step,
-  title,
-  description,
-  children,
-}: {
-  icon: LucideIcon;
-  step: number;
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="text-center">
-      <StepHeader icon={icon} step={step} title={title} description={description} />
-      {children}
-    </div>
-  );
+function FieldTitle({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <p className={cn("text-sm font-bold text-navy", className)}>{children}</p>;
 }
 
-function CategoryCard({
-  icon: Icon,
-  title,
-  description,
-  active,
-  onClick,
-}: {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  active: boolean;
-  onClick: () => void;
-}) {
+function CategoryCard({ icon: Icon, title, description, active, onClick }: { icon: LucideIcon; title: string; description: string; active: boolean; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "grid min-h-[84px] grid-cols-[38px_1fr] items-center gap-3 rounded-[17px] border px-4 text-left transition duration-200 hover:-translate-y-0.5",
-        active ? "scale-[1.01] border-ice bg-ice/12 text-white" : "border-white/12 bg-white/[0.045] text-white/82 hover:border-white/28"
-      )}
-    >
-      <span className={cn("grid h-9 w-9 place-items-center rounded-xl border", active ? "border-ice/45 bg-ice/20 text-ice" : "border-white/12 bg-white/5 text-white/65")}>
-        <Icon size={20} />
+    <button type="button" onClick={onClick} className={cn("relative flex min-h-[126px] items-center gap-4 rounded-xl border p-5 text-left transition hover:-translate-y-0.5", active ? "border-navy/25 bg-navy/5 shadow-[0_0_0_2px_rgba(16,37,31,0.08)]" : "border-line bg-white hover:border-navy/20")}>
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-navy">
+        <Icon size={38} strokeWidth={1.6} />
       </span>
       <span>
-        <span className="block text-[0.95rem] font-semibold">{title}</span>
-        <span className="mt-1 block text-xs leading-4 text-white/50">{description}</span>
+        <span className="block text-lg font-bold">{title}</span>
+        <span className="mt-1 block text-xs leading-4 text-ink-soft">{description}</span>
       </span>
+      {active && <span className="absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full bg-navy text-white"><Check size={16} /></span>}
     </button>
   );
 }
 
-function Choice({
-  active,
-  onClick,
-  children,
-  compact,
-  icon: Icon,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  compact?: boolean;
-  icon?: LucideIcon;
-}) {
+function ImageOption({ title, image, active, onClick }: { title: string; image: string; active: boolean; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-[16px] border text-left text-sm font-medium transition duration-200 hover:-translate-y-0.5",
-        compact ? "min-h-[74px] px-4 py-3" : "min-h-[72px] px-4 py-4",
-        active ? "scale-[1.01] border-ice bg-ice/15 text-white" : "border-white/12 bg-white/5 text-white/80 hover:border-white/30"
-      )}
-    >
-      <span className="flex items-center gap-2">
-        {Icon && <Icon size={19} className="text-ice/85" />}
-        {children}
+    <button type="button" onClick={onClick} className="text-left">
+      <span className={cn("relative block aspect-[4/3] overflow-hidden rounded-xl border bg-page transition", active ? "border-navy shadow-[0_0_0_3px_rgba(16,37,31,0.14)]" : "border-line")}>
+        <Image src={image} alt="" fill className="object-cover" />
+        {active && <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-navy text-white"><Check size={16} /></span>}
       </span>
+      <span className="mt-2 block text-sm font-bold text-navy">{title}</span>
     </button>
   );
 }
 
-function IconInput({
-  icon: Icon,
-  value,
-  onChange,
-  placeholder,
-}: {
-  icon: LucideIcon;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-}) {
+function LocationOption({ location, active, onClick }: { location: { name: string; slug: string }; active: boolean; onClick: () => void }) {
   return (
-    <label className="relative block">
-      <Icon size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/38" />
-      <input className="bg-white/5 pl-11 text-white" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
+    <button type="button" onClick={onClick} className="text-left">
+      <span className={cn("relative block aspect-square overflow-hidden rounded-lg border bg-page transition", active ? "border-navy shadow-[0_0_0_2px_rgba(16,37,31,0.14)]" : "border-line")}>
+        <Image src={locationImages[location.slug] ?? typeImages.apartment} alt="" fill className="object-cover" />
+        {active && <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-navy text-white"><Check size={14} /></span>}
+      </span>
+      <span className="mt-2 block truncate text-xs font-bold text-navy">{location.name}</span>
+    </button>
+  );
+}
+
+function Segmented({ value, options, onChange }: { value: string; options: [string, string][]; onChange: (value: string) => void }) {
+  return (
+    <div className="mt-3 grid gap-4 sm:grid-cols-3">
+      {options.map(([optionValue, label]) => (
+        <button key={optionValue} type="button" onClick={() => onChange(optionValue)} className={cn("min-h-12 rounded-xl border text-sm font-bold transition hover:-translate-y-0.5", value === optionValue ? "border-navy bg-navy text-white" : "border-line bg-white text-navy")}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SectionLabel({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+  return <p className="flex items-center gap-2 text-sm font-bold text-navy"><Icon size={17} />{children}</p>;
+}
+
+function SmallPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className={cn("min-h-10 rounded-lg border px-2 text-xs font-bold transition", active ? "border-navy bg-navy text-white" : "border-line bg-white text-navy hover:border-navy/25")}>
+      {children}
+    </button>
+  );
+}
+
+function DualRange({ value, onChange }: { value: [number, number]; onChange: (value: [number, number]) => void }) {
+  const [minValue, maxValue] = value[0] <= value[1] ? value : [value[1], value[0]];
+  const minPercent = ((minValue - budgetConfig.min) / (budgetConfig.max - budgetConfig.min)) * 100;
+  const maxPercent = ((maxValue - budgetConfig.min) / (budgetConfig.max - budgetConfig.min)) * 100;
+  return (
+    <div className="mt-4">
+      <div className="relative h-9">
+        <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-line" />
+        <div className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-navy" style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }} />
+        <RangeInput value={minValue} onChange={(next) => onChange([Math.min(next, maxValue), maxValue])} />
+        <RangeInput value={maxValue} onChange={(next) => onChange([minValue, Math.max(next, minValue)])} />
+      </div>
+      <div className="mt-2 flex justify-between text-xs font-semibold text-navy">
+        <span>{formatBudget(minValue)}</span>
+        <span>{formatBudget(maxValue)}</span>
+      </div>
+    </div>
+  );
+}
+
+function RangeInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  return (
+    <input
+      type="range"
+      min={budgetConfig.min}
+      max={budgetConfig.max}
+      step={budgetConfig.step}
+      value={value}
+      onChange={(event) => onChange(Number(event.target.value))}
+      className="pointer-events-none absolute inset-x-0 top-0 h-9 !min-h-0 appearance-none !border-0 !bg-transparent !p-0 outline-none focus:shadow-none [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-navy [&::-moz-range-thumb]:shadow-none [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-9 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-2 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-navy"
+    />
+  );
+}
+
+function TextInput({ label, required, icon: Icon, value, placeholder, prefix, onChange }: { label: string; required?: boolean; icon: LucideIcon; value: string; placeholder: string; prefix?: string; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="text-sm font-bold text-navy">{label} {required && <span className="text-red-600">*</span>}</span>
+      <span className="relative mt-2 flex items-center">
+        <Icon size={18} className="absolute left-4 text-ink-soft" />
+        {prefix && <span className="absolute left-11 text-sm font-semibold text-navy">{prefix}</span>}
+        <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={cn("rounded-xl", prefix ? "!pl-20" : "!pl-12")} />
+      </span>
     </label>
   );
 }
 
-function CheckRow({
-  checked,
-  onChange,
-  children,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  children: React.ReactNode;
-}) {
+function CheckRow({ checked, onChange, children }: { checked: boolean; onChange: (checked: boolean) => void; children: React.ReactNode }) {
   return (
-    <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6 text-white/70">
-      <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border border-ice/30 bg-white/[0.03] text-transparent transition peer-checked:border-ice peer-checked:bg-ice peer-checked:text-navy peer-focus-visible:ring-2 peer-focus-visible:ring-ice peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-navy">
+    <label className="flex cursor-pointer items-start gap-3 text-sm text-ink-soft">
+      <input type="checkbox" className="peer sr-only" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border border-line bg-white text-transparent transition peer-checked:border-navy peer-checked:bg-navy peer-checked:text-white">
         <Check size={14} />
       </span>
       <span>{children}</span>
@@ -693,33 +678,22 @@ function CheckRow({
 function normalizeSavedState(saved: State): State {
   const propertyCategory =
     saved.propertyCategory ||
-    (saved.propertyTypes.some((slug) => ["sco", "shop", "showroom", "office", "commercial-plot"].includes(slug))
-      ? "COMMERCIAL"
-      : saved.propertyTypes.length
-        ? "RESIDENTIAL"
-        : "");
-  const migratedStep = saved.step >= 5 ? 6 : saved.step === 4 && (saved.minBudget || saved.maxBudget || saved.minArea || saved.maxArea || saved.timeline) ? 5 : saved.step;
+    (saved.propertyTypes.some((slug) => ["sco", "shop", "showroom", "office", "commercial-plot"].includes(slug)) ? "COMMERCIAL" : saved.propertyTypes.length ? "RESIDENTIAL" : "");
   return {
     ...saved,
     propertyCategory,
-    step: Math.min(TOTAL_STEPS, Math.max(1, migratedStep || 1)),
-    bedrooms: propertyCategory === "RESIDENTIAL" && saved.propertyTypes.some((slug) => bedroomTypes.has(slug)) ? saved.bedrooms : [],
+    step: Math.min(TOTAL_STEPS, Math.max(1, Number(saved.step) || 1)),
   };
 }
 
-function getBudgetValues(state: State): [number, number] {
-  const config = budgetConfigs[state.transactionType || "BUY"];
-  return [
-    clamp(Number(state.minBudget) || config.min, config.min, config.max),
-    clamp(Number(state.maxBudget) || config.max, config.min, config.max),
-  ];
+function toggle<T>(list: T[], value: T) {
+  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }
 
-function getAreaValues(state: State): [number, number] {
-  const config = areaConfigs[state.propertyCategory || "RESIDENTIAL"];
+function getBudgetValues(state: State): [number, number] {
   return [
-    clamp(Number(state.minArea) || config.min, config.min, config.max),
-    clamp(Number(state.maxArea) || config.max, config.min, config.max),
+    clamp(Number(state.minBudget) || budgetConfig.min, budgetConfig.min, budgetConfig.max),
+    clamp(Number(state.maxBudget) || budgetConfig.max, budgetConfig.min, budgetConfig.max),
   ];
 }
 
@@ -734,123 +708,4 @@ function formatBudget(amount: number) {
   }
   const lakh = amount / 100_000;
   return `Rs ${lakh % 1 === 0 ? lakh.toFixed(0) : lakh.toFixed(1)} L`;
-}
-
-function formatAreaRange(amount: number) {
-  return `${amount.toLocaleString("en-IN")} sq ft`;
-}
-
-function SectionLabel({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
-  return (
-    <p className="flex items-center gap-2 text-sm font-semibold text-white/78">
-      <Icon size={17} className="text-ice" />
-      {children}
-    </p>
-  );
-}
-
-function RangeSection({
-  icon,
-  title,
-  minLabel,
-  maxLabel,
-  config,
-  value,
-  format,
-  onChange,
-}: {
-  icon: LucideIcon;
-  title: string;
-  minLabel: string;
-  maxLabel: string;
-  config: { min: number; max: number; step: number };
-  value: [number, number];
-  format: (value: number) => string;
-  onChange: (value: [number, number]) => void;
-}) {
-  const [minValue, maxValue] = value[0] <= value[1] ? value : [value[1], value[0]];
-  const minPercent = ((minValue - config.min) / (config.max - config.min)) * 100;
-  const maxPercent = ((maxValue - config.min) / (config.max - config.min)) * 100;
-
-  return (
-    <div>
-      <div className="flex items-center justify-between gap-4">
-        <SectionLabel icon={icon}>{title}</SectionLabel>
-        <p className="text-sm font-semibold text-ice">
-          {format(minValue)} - {format(maxValue)}
-        </p>
-      </div>
-      <div className="relative mt-5 h-10">
-        <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-white/10" />
-        <div
-          className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-ice"
-          style={{ left: `${minPercent}%`, right: `${100 - maxPercent}%` }}
-        />
-        <RangeInput
-          ariaLabel={minLabel}
-          min={config.min}
-          max={config.max}
-          step={config.step}
-          value={minValue}
-          onChange={(next) => onChange([Math.min(next, maxValue), maxValue])}
-        />
-        <RangeInput
-          ariaLabel={maxLabel}
-          min={config.min}
-          max={config.max}
-          step={config.step}
-          value={maxValue}
-          onChange={(next) => onChange([minValue, Math.max(next, minValue)])}
-        />
-      </div>
-      <div className="mt-1 flex items-center justify-between text-xs text-white/42">
-        <span>{format(config.min)}</span>
-        <span>{format(config.max)}</span>
-      </div>
-    </div>
-  );
-}
-
-function RangeInput({
-  ariaLabel,
-  min,
-  max,
-  step,
-  value,
-  onChange,
-}: {
-  ariaLabel: string;
-  min: number;
-  max: number;
-  step: number;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <input
-      type="range"
-      aria-label={ariaLabel}
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={(event) => onChange(Number(event.target.value))}
-      className="pointer-events-none absolute inset-x-0 top-0 h-10 min-h-0 appearance-none bg-transparent p-0 outline-none focus:shadow-none [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-navy [&::-moz-range-thumb]:bg-ice [&::-moz-range-thumb]:shadow-none [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-10 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-2.5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-navy [&::-webkit-slider-thumb]:bg-ice [&::-webkit-slider-thumb]:transition [&::-webkit-slider-thumb]:hover:scale-110 focus-visible:[&::-webkit-slider-thumb]:ring-4 focus-visible:[&::-webkit-slider-thumb]:ring-ice/35"
-    />
-  );
-}
-
-function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "min-h-11 rounded-full border px-4 text-sm font-medium transition hover:-translate-y-0.5",
-        active ? "scale-[1.01] border-ice bg-ice/15 text-ice" : "border-white/12 bg-white/5 text-white/72 hover:border-white/30"
-      )}
-    >
-      {children}
-    </button>
-  );
 }

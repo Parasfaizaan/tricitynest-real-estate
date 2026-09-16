@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowUpRight } from "lucide-react";
 import { PropertyCard, type CardProperty } from "@/components/property/card";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
@@ -123,25 +122,31 @@ export function LocationsGrid({
       : location.imageUrl;
 
   return (
-    <section className="section-pad">
+    <section className="bg-navy py-14 text-white md:py-16">
       <div className="container-px">
         <Reveal>
-          <p className="eyebrow">Corridor</p>
-          <h2 className="display mt-3 text-[clamp(2rem,4vw,3.2rem)] text-navy">Locations we serve</h2>
+          <h2 className="text-[clamp(1.75rem,3vw,2.5rem)] font-bold tracking-tight">Explore By Cities</h2>
         </Reveal>
-        <Stagger className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <Stagger className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {locations.map((l) => (
             <StaggerItem key={l.slug}>
-              <Link href={`/properties/${l.slug}`} className="group relative block aspect-[5/4] overflow-hidden rounded-[22px]">
-                {imageFor(l) && (
-                  <Image src={imageFor(l) || ""} alt={l.name} fill className="object-cover transition duration-700 group-hover:scale-[1.04]" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/20 to-transparent transition duration-500 group-hover:via-navy/30" />
-                <div className="absolute bottom-5 left-5 text-white">
-                  <p className="display text-2xl">{l.name}</p>
-                  <p className="text-sm text-white/70">{l._count?.properties ?? 0} listings</p>
+              <Link
+                href={`/properties/${l.slug}`}
+                className="group block rounded-lg bg-white p-2 text-center text-navy shadow-[0_14px_34px_rgba(0,0,0,0.16)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(0,0,0,0.24)]"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden rounded-md bg-page">
+                  {imageFor(l) && (
+                    <Image
+                      src={imageFor(l) || ""}
+                      alt={l.name}
+                      fill
+                      className="object-cover transition duration-500 group-hover:scale-[1.04]"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
+                    />
+                  )}
                 </div>
-                <ArrowUpRight className="absolute right-5 top-5 text-white/70 transition duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-ice" size={18} />
+                <p className="mt-3 text-black font-bold leading-tight">{l.name}</p>
+                {/* <p className="mt-1 text-sm leading-none text-navy/75">{l._count?.properties ?? 0}</p> */}
               </Link>
             </StaggerItem>
           ))}

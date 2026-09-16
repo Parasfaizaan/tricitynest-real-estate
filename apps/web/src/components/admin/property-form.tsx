@@ -234,6 +234,37 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
   return (
     <>
     <form onSubmit={onSubmit} className="grid max-w-5xl gap-6">
+      <Section title="Images">
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => addImages(e.target.files)} />
+        {images.length === 0 ? (
+          <p className="text-sm text-ink-soft">Upload at least one image before saving.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {images.map((image, index) => (
+              <div key={image.id} className="overflow-hidden rounded-lg border border-line bg-white">
+                <img src={image.url} alt="" className="h-40 w-full object-cover" />
+                <div className="grid gap-2 p-3 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input type="radio" checked={coverId === image.id} onChange={() => setCover(image.id)} />
+                    Cover image
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className="underline disabled:text-ink-soft" disabled={index === 0} onClick={() => moveImage(image.id, -1)}>
+                      Move up
+                    </button>
+                    <button type="button" className="underline disabled:text-ink-soft" disabled={index === images.length - 1} onClick={() => moveImage(image.id, 1)}>
+                      Move down
+                    </button>
+                    <button type="button" className="text-red-700 underline" onClick={() => removeImage(image.id)}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
       <Section title="Basic information">
         <input name="title" required defaultValue={initial?.title} placeholder="Property name" />
         <input name="shortDescription" required defaultValue={initial?.shortDescription} placeholder="Short description" />
@@ -347,37 +378,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
         />
       </Section>
 
-      <Section title="Images">
-        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => addImages(e.target.files)} />
-        {images.length === 0 ? (
-          <p className="text-sm text-ink-soft">Upload at least one image before saving.</p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {images.map((image, index) => (
-              <div key={image.id} className="overflow-hidden rounded-lg border border-line bg-white">
-                <img src={image.url} alt="" className="h-40 w-full object-cover" />
-                <div className="grid gap-2 p-3 text-sm">
-                  <label className="flex items-center gap-2">
-                    <input type="radio" checked={coverId === image.id} onChange={() => setCover(image.id)} />
-                    Cover image
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className="underline disabled:text-ink-soft" disabled={index === 0} onClick={() => moveImage(image.id, -1)}>
-                      Move up
-                    </button>
-                    <button type="button" className="underline disabled:text-ink-soft" disabled={index === images.length - 1} onClick={() => moveImage(image.id, 1)}>
-                      Move down
-                    </button>
-                    <button type="button" className="text-red-700 underline" onClick={() => removeImage(image.id)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
+      
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={busy || images.length === 0}>
