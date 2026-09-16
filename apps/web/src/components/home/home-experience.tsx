@@ -33,8 +33,8 @@ export function HomeExperience({
       <FeaturedRow properties={featured} />
       <LocationsGrid locations={locations} />
       <WhyUs />
-      <Testimonials />
-      <AboutTeaser />
+      {/* <Testimonials /> */}
+      {/* <AboutTeaser /> */}
       <ConsultationForm />
       <Newsletter />
     </>

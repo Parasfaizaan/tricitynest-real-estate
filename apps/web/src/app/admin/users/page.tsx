@@ -11,7 +11,10 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: S
   const currentUser = await requireUser();
   const rawPage = Array.isArray(sp.page) ? sp.page[0] : sp.page;
   const page = Math.max(1, Number(rawPage ?? 1) || 1);
-  const where = { NOT: { email: { endsWith: "@deleted.local" } } };
+  const where = {
+    role: { not: "SUPER_ADMIN" as const },
+    NOT: { email: { endsWith: "@deleted.local" } },
+  };
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where,

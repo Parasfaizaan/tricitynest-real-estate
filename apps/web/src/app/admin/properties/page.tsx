@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatInr } from "@/lib/format";
+import { PropertyTableActions } from "@/components/admin/property-table-actions";
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
 
@@ -44,7 +45,7 @@ export default async function AdminPropertiesPage({ searchParams }: { searchPara
               <th className="p-3">City</th>
               <th className="p-3">Price</th>
               <th className="p-3">Status</th>
-              <th className="p-3"></th>
+              <th className="p-3 text-right">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -67,9 +68,7 @@ export default async function AdminPropertiesPage({ searchParams }: { searchPara
                 <td className="p-3">{formatInr(p.price, p.transactionType)}</td>
                 <td className="p-3">{p.status}</td>
                 <td className="p-3">
-                  <Link href={`/admin/properties/${p.id}`} className="text-navy underline">
-                    Edit
-                  </Link>
+                  <PropertyTableActions id={p.id} deletionPending={p.deletionRequests.length > 0} />
                 </td>
               </tr>
             ))}

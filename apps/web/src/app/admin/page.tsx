@@ -17,7 +17,7 @@ export default async function AdminHome() {
     { label: "Properties", value: total },
     { label: "Published", value: published },
     { label: "Drafts", value: draft },
-    { label: "Leads", value: leads },
+    { label: "Leads/inquiries", value: leads },
     { label: "New leads", value: newLeads },
     { label: "Views", value: views._sum.views ?? 0 },
     { label: "Pending deletes", value: pending },
@@ -47,6 +47,7 @@ export default async function AdminHome() {
               <th className="p-3">Phone</th>
               <th className="p-3">Intent</th>
               <th className="p-3">Status</th>
+              
             </tr>
           </thead>
           <tbody>
