@@ -299,7 +299,7 @@ export function PropertyMatcher({
       <motion.button
         type="button"
         aria-label="Close overlay"
-        className="absolute inset-0 bg-[rgba(2,15,25,0.72)] backdrop-blur-[12px]"
+        className="absolute inset-0 bg-[rgba(16,37,31,0.76)] backdrop-blur-[12px]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -311,7 +311,7 @@ export function PropertyMatcher({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={reduce ? undefined : { opacity: 0, y: 8, scale: 0.98 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 max-h-[calc(100dvh-24px)] w-[min(690px,calc(100vw-24px))] overflow-y-auto rounded-[24px] border border-[rgba(170,215,240,0.12)] bg-[#061827] px-5 py-5 text-white shadow-[0_28px_90px_rgba(0,0,0,0.34)] [scrollbar-color:rgba(168,216,245,0.35)_transparent] [scrollbar-width:thin] sm:max-h-[calc(100vh-64px)] sm:w-[min(690px,calc(100vw-48px))] sm:px-11 sm:py-10"
+        className="relative z-10 max-h-[calc(100dvh-24px)] w-[min(690px,calc(100vw-24px))] overflow-y-auto rounded-[24px] border border-ice/15 bg-navy px-5 py-5 text-white shadow-[0_28px_90px_rgba(0,0,0,0.34)] [scrollbar-color:rgba(214,168,90,0.42)_transparent] [scrollbar-width:thin] sm:max-h-[calc(100vh-64px)] sm:w-[min(690px,calc(100vw-48px))] sm:px-11 sm:py-10"
       >
         <button
           ref={closeRef}
@@ -682,7 +682,7 @@ function CheckRow({
   return (
     <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6 text-white/70">
       <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border border-ice/30 bg-white/[0.03] text-transparent transition peer-checked:border-ice peer-checked:bg-ice peer-checked:text-navy peer-focus-visible:ring-2 peer-focus-visible:ring-ice peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[#061827]">
+      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border border-ice/30 bg-white/[0.03] text-transparent transition peer-checked:border-ice peer-checked:bg-ice peer-checked:text-navy peer-focus-visible:ring-2 peer-focus-visible:ring-ice peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-navy">
         <Check size={14} />
       </span>
       <span>{children}</span>
@@ -835,7 +835,7 @@ function RangeInput({
       step={step}
       value={value}
       onChange={(event) => onChange(Number(event.target.value))}
-      className="pointer-events-none absolute inset-x-0 top-0 h-10 min-h-0 appearance-none bg-blue-300 p-0 outline-none focus:shadow-none [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-navy [&::-moz-range-thumb]:bg-ice [&::-moz-range-thumb]:shadow-none [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-10 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-2.5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-navy [&::-webkit-slider-thumb]:bg-ice [&::-webkit-slider-thumb]:transition [&::-webkit-slider-thumb]:hover:scale-110 focus-visible:[&::-webkit-slider-thumb]:ring-4 focus-visible:[&::-webkit-slider-thumb]:ring-ice/35"
+      className="pointer-events-none absolute inset-x-0 top-0 h-10 min-h-0 appearance-none bg-transparent p-0 outline-none focus:shadow-none [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-navy [&::-moz-range-thumb]:bg-ice [&::-moz-range-thumb]:shadow-none [&::-moz-range-track]:bg-transparent [&::-webkit-slider-runnable-track]:h-10 [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:mt-2.5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-navy [&::-webkit-slider-thumb]:bg-ice [&::-webkit-slider-thumb]:transition [&::-webkit-slider-thumb]:hover:scale-110 focus-visible:[&::-webkit-slider-thumb]:ring-4 focus-visible:[&::-webkit-slider-thumb]:ring-ice/35"
     />
   );
 }

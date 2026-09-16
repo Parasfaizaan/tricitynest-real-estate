@@ -6,7 +6,7 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const PAGE_SIZE = 10;
 
-export default async function UsersPage({ searchParams }: { searchParams: Search }) {
+export default async function AdminUsersPage({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
   const currentUser = await requireUser();
   const rawPage = Array.isArray(sp.page) ? sp.page[0] : sp.page;
@@ -29,7 +29,6 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
         currentUserRole={currentUser?.role ?? "USER"}
         page={page}
         pages={Math.max(1, Math.ceil(total / PAGE_SIZE))}
-        basePath="/super-admin/users"
         users={users.map((u) => ({
           id: u.id,
           name: u.name,

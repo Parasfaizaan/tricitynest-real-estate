@@ -24,7 +24,12 @@ export default async function AdminHome() {
   ];
   return (
     <div>
-      <h1 className="display text-3xl text-navy">Overview</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="display text-3xl text-navy">Overview</h1>
+        <Link href="/admin/properties/new" className="rounded-full bg-navy px-5 py-2.5 text-sm font-semibold !text-white">
+          Add property
+        </Link>
+      </div>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
           <div key={c.label} className="card-surface p-5">
@@ -56,9 +61,6 @@ export default async function AdminHome() {
           </tbody>
         </table>
       </div>
-      <Link href="/admin/properties/new" className="mt-8 inline-flex min-h-11 items-center rounded-full bg-navy px-5 text-sm text-white">
-        Add property
-      </Link>
     </div>
   );
 }

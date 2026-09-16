@@ -26,18 +26,19 @@ export type CardProperty = {
   images: { url: string; alt?: string | null }[];
 };
 
-export function PropertyCard({ property }: { property: CardProperty }) {
+export function PropertyCard({ property, reveal = true }: { property: CardProperty; reveal?: boolean }) {
   const cover = property.images[0]?.url;
   const reduce = useReducedMotion();
+  const shouldReveal = reveal && !reduce;
   return (
     <motion.article
       variants={staggerItem}
-      initial={reduce ? false : "hidden"}
-      whileInView="show"
-      viewport={{ once: true, margin: "-50px" }}
+      initial={shouldReveal ? "hidden" : false}
+      whileInView={shouldReveal ? "show" : undefined}
+      viewport={shouldReveal ? { once: true, margin: "-50px" } : undefined}
       whileHover={reduce ? undefined : { y: -3 }}
       transition={{ duration: motionDurations.button, ease: motionEase }}
-      className="group card-surface overflow-hidden transition-colors duration-300 hover:border-ice/70 hover:shadow-[0_20px_50px_rgba(6,24,39,0.08)]"
+      className="group card-surface overflow-hidden transition-colors duration-300 hover:border-ice/70 hover:shadow-[0_20px_50px_rgba(16,37,31,0.1)]"
     >
       <Link href={`/property/${property.slug}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-navy-2">

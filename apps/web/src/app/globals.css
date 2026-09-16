@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --navy: #061827;
-  --navy-2: #142534;
-  --navy-3: #1c3548;
-  --page: #eef4f7;
-  --ice: #a8d8f5;
-  --ice-2: #c9e7f8;
-  --ink: #0d1b24;
-  --ink-soft: #4a6270;
-  --line: #d5e1e8;
+  --navy: #10251f;
+  --navy-2: #18372f;
+  --navy-3: #245145;
+  --page: #f5f1e8;
+  --ice: #d6a85a;
+  --ice-2: #ead3a2;
+  --ink: #17211d;
+  --ink-soft: #647067;
+  --line: #ddd6c8;
   --white: #ffffff;
   --radius: 22px;
 }
@@ -91,9 +91,26 @@ input, select, textarea {
   min-height: 44px;
 }
 
+input[type="checkbox"], input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--navy);
+}
+
+input[type="checkbox"] {
+  border-radius: 4px;
+}
+
+input[type="radio"] {
+  border-radius: 999px;
+}
+
 input:focus, select:focus, textarea:focus {
-  border-color: #7fb7d8;
-  box-shadow: 0 0 0 4px rgba(168, 216, 245, 0.35);
+  border-color: #d6a85a;
+  box-shadow: 0 0 0 4px rgba(214, 168, 90, 0.28);
 }
 
 .dark-field input, .dark-field select, .dark-field textarea {

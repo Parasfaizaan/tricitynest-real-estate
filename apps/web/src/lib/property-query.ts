@@ -33,7 +33,7 @@ export type PropertyFilters = {
 
 export async function queryProperties(filters: PropertyFilters) {
   const page = Math.max(1, Number(filters.page ?? 1) || 1);
-  const pageSize = Math.min(24, Math.max(6, Number(filters.pageSize ?? 12) || 12));
+  const pageSize = Math.min(24, Math.max(6, Number(filters.pageSize ?? 6) || 6));
 
   const where: Record<string, unknown> = {
     status: PropertyStatus.PUBLISHED,

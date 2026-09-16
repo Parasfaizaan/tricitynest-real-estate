@@ -129,7 +129,7 @@ export function PropertyDetail({ property, similar }: { property: Prop; similar:
             </p>
             <div className="mt-6 flex flex-wrap gap-3 text-sm">
               {bhkLabel(property.bedrooms) && <Chip>{bhkLabel(property.bedrooms)}</Chip>}
-              <Chip>{formatArea(property.area)}</Chip>
+              <Chip>{formatArea(property.area, property.areaUnit)}</Chip>
               {property.bathrooms ? <Chip>{property.bathrooms} baths</Chip> : null}
               {property.possession && <Chip>{possessionLabel(property.possession)}</Chip>}
               {property.furnishing && <Chip>{furnishingLabel(property.furnishing)}</Chip>}
@@ -141,6 +141,18 @@ export function PropertyDetail({ property, similar }: { property: Prop; similar:
                 <div className="mt-4 flex flex-wrap gap-2">
                   {property.amenities.map((a) => (
                     <Chip key={a.name}>{a.name}</Chip>
+                  ))}
+                </div>
+              </>
+            )}
+            {property.features && property.features.length > 0 && (
+              <>
+                <h2 className="mt-10 text-xl font-semibold text-navy">Features</h2>
+                <div className="mt-4 grid gap-2 text-sm text-ink-soft sm:grid-cols-2">
+                  {property.features.map((feature) => (
+                    <p key={feature.label} className="rounded-lg border border-line bg-white px-3 py-2">
+                      {feature.label}
+                    </p>
                   ))}
                 </div>
               </>

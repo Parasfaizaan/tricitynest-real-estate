@@ -22,7 +22,8 @@ export async function POST(req: Request) {
   if (!parsed.success) return jsonError("Invalid email or password.");
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
-  if (!user || !user.active) return jsonError("Invalid email or password.", 401);
+  if (!user) return jsonError("Invalid email or password.", 401);
+  if (!user.active) return jsonError("Your account is suspended. Please contact admin.", 403);
   const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!ok) return jsonError("Invalid email or password.", 401);
 

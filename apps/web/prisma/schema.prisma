@@ -3,8 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+
 }
 
 enum Role {
@@ -69,6 +71,8 @@ model User {
   passwordHash  String
   name          String
   phone         String?
+  profilePhotoUrl String?
+  socialLinks   String?
   role          Role     @default(USER)
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())

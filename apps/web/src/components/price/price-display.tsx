@@ -171,7 +171,7 @@ export function PriceUnlockModal({
       <motion.button
         type="button"
         aria-label="Close overlay"
-        className="absolute inset-0 bg-[rgba(2,15,25,0.72)] backdrop-blur-[12px]"
+        className="absolute inset-0 bg-[rgba(16,37,31,0.76)] backdrop-blur-[12px]"
         initial={reduce ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={reduce ? undefined : { opacity: 0 }}
@@ -184,8 +184,8 @@ export function PriceUnlockModal({
         exit={reduce ? undefined : { opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         className={cn(
-          "relative z-10 max-h-[calc(100svh-32px)] w-full max-w-[560px] overflow-y-auto rounded-[28px] border border-[rgba(170,215,240,0.12)] bg-[#071B29] px-5 py-6 text-white shadow-[0_28px_90px_rgba(0,0,0,0.36)] sm:px-9 sm:py-8",
-          dark && "bg-[#071B29]"
+          "relative z-10 max-h-[calc(100svh-32px)] w-full max-w-[560px] overflow-y-auto rounded-[28px] border border-ice/15 bg-navy px-5 py-6 text-white shadow-[0_28px_90px_rgba(0,0,0,0.36)] sm:px-9 sm:py-8",
+          dark && "bg-navy"
         )}
       >
         <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-ice/35" />
@@ -225,17 +225,17 @@ export function PriceUnlockModal({
         <form onSubmit={handleSubmit(onSubmit)} className="relative mt-7 grid gap-[17px]">
           <Field label="Full name" error={errors.name?.message || (serverError.includes("name") ? serverError : "")}>
             <input
-              className="h-14 rounded-[15px] border-white/0 bg-[#f4f8fa] px-4 text-[0.95rem] text-navy placeholder:text-[#6b7d88] focus:border-ice focus:ring-4 focus:ring-ice/25"
+              className="h-14 rounded-[15px] border-white/0 bg-page px-4 text-[0.95rem] text-navy placeholder:text-ink-soft focus:border-ice focus:ring-4 focus:ring-ice/25"
               placeholder="Enter your full name"
               {...register("name", { required: "Full name is required" })}
             />
           </Field>
           <Field label="Phone number" error={errors.phone?.message}>
-            <div className="flex h-14 items-center rounded-[15px] border border-white/0 bg-[#f4f8fa] text-navy focus-within:border-ice focus-within:ring-4 focus-within:ring-ice/25">
+            <div className="flex h-14 items-center rounded-[15px] border border-white/0 bg-page text-navy focus-within:border-ice focus-within:ring-4 focus-within:ring-ice/25">
               <span className="grid h-full place-items-center border-r border-line/80 px-4 text-sm font-semibold text-navy/70">+91</span>
               <input
                 inputMode="tel"
-                className="h-full min-h-0 border-0 bg-transparent px-4 text-[0.95rem] placeholder:text-[#6b7d88] focus:shadow-none focus:ring-0"
+                className="h-full min-h-0 border-0 bg-transparent px-4 text-[0.95rem] placeholder:text-ink-soft focus:shadow-none focus:ring-0"
                 placeholder="98765 43210"
                 {...register("phone", { required: "Phone number is required" })}
               />
@@ -244,7 +244,7 @@ export function PriceUnlockModal({
           <Field label="Email address" error={errors.email?.message}>
             <input
               type="email"
-              className="h-14 rounded-[15px] border-white/0 bg-[#f4f8fa] px-4 text-[0.95rem] text-navy placeholder:text-[#6b7d88] focus:border-ice focus:ring-4 focus:ring-ice/25"
+              className="h-14 rounded-[15px] border-white/0 bg-page px-4 text-[0.95rem] text-navy placeholder:text-ink-soft focus:border-ice focus:ring-4 focus:ring-ice/25"
               placeholder="name@example.com"
               {...register("email", { required: "Email address is required" })}
             />
@@ -303,7 +303,7 @@ function CustomCheckbox({ label, registration }: { label: string; registration: 
   return (
     <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm leading-6 text-white/68">
       <input type="checkbox" className="peer sr-only" {...registration} />
-      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border border-ice/30 bg-white/[0.03] text-transparent transition duration-200 peer-checked:border-ice peer-checked:bg-ice peer-checked:text-navy peer-focus-visible:ring-2 peer-focus-visible:ring-ice peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-[#071B29]">
+      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border border-ice/30 bg-white/[0.03] text-transparent transition duration-200 peer-checked:border-ice peer-checked:bg-ice peer-checked:text-navy peer-focus-visible:ring-2 peer-focus-visible:ring-ice peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-navy">
         <Check size={14} />
       </span>
       <span>{label}</span>

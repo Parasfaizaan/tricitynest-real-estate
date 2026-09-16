@@ -9,7 +9,7 @@ import { PropertyDetail } from "@/components/property/detail";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const p = await prisma.property.findFirst({ where: { slug, deletedAt: null } });
+  const p = await prisma.property.findFirst({ where: { slug, status: PropertyStatus.PUBLISHED, deletedAt: null } });
   if (!p) return { title: "Property" };
   return {
     title: p.title,

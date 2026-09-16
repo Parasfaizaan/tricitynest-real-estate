@@ -7,7 +7,12 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
   const [property, locations, propertyTypes, amenities, builders] = await Promise.all([
     prisma.property.findFirst({
       where: { id, deletedAt: null },
-      include: { images: true, amenities: true, deletionRequests: { where: { status: "PENDING" } } },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        amenities: true,
+        features: true,
+        deletionRequests: { where: { status: "PENDING" } },
+      },
     }),
     prisma.location.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.propertyType.findMany({ orderBy: { sortOrder: "asc" } }),

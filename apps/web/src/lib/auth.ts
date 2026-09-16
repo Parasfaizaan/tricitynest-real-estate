@@ -8,6 +8,9 @@ export type SessionUser = {
   email: string;
   name: string;
   role: Role;
+  phone?: string | null;
+  profilePhotoUrl?: string | null;
+  socialLinks?: string | null;
 };
 
 const COOKIE = "tn_session";
@@ -63,7 +66,14 @@ export async function requireUser() {
   if (!session) return null;
   const user = await prisma.user.findUnique({ where: { id: session.id } });
   if (!user || !user.active) return null;
-  return { ...session, role: user.role, name: user.name };
+  return {
+    ...session,
+    role: user.role,
+    name: user.name,
+    phone: user.phone,
+    profilePhotoUrl: user.profilePhotoUrl,
+    socialLinks: user.socialLinks,
+  };
 }
 
 export function isStaff(role: Role) {

@@ -5,6 +5,7 @@ import { jsonError } from "@/lib/utils";
 import { writeAudit } from "@/lib/audit";
 import { Category, Furnishing, Possession, PropertyStatus, TransactionType } from "@prisma/client";
 import { propertyInclude } from "@/lib/property-query";
+import { MAX_PROPERTY_IMAGES, deleteS3Object, uploadPropertyImageToS3, type UploadedPropertyImage } from "@/lib/s3";
 
 const schema = z.object({
   title: z.string().min(4).optional(),
@@ -22,17 +23,61 @@ const schema = z.object({
   bathrooms: z.number().optional().nullable(),
   balconies: z.number().optional().nullable(),
   area: z.number().positive().optional(),
+  areaUnit: z.string().optional(),
+  carpetArea: z.number().optional().nullable(),
   locality: z.string().optional(),
   locationId: z.string().optional(),
   city: z.string().optional(),
+  postalCode: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
   furnishing: z.enum(["UNFURNISHED", "SEMI_FURNISHED", "FURNISHED"]).optional(),
   possession: z.enum(["READY", "UNDER_CONSTRUCTION", "NEW_LAUNCH"]).optional(),
+  possessionDate: z.string().optional().nullable(),
   reraNumber: z.string().optional().nullable(),
+  floor: z.number().optional().nullable(),
+  totalFloors: z.number().optional().nullable(),
+  facing: z.string().optional().nullable(),
+  parking: z.boolean().optional(),
   tagline: z.string().optional().nullable(),
   images: z.array(z.string().url()).optional(),
+  existingImages: z.array(z.object({ id: z.string(), sortOrder: z.number(), isCover: z.boolean() })).optional(),
   amenityIds: z.array(z.string()).optional(),
+  features: z.array(z.string()).optional(),
   builderId: z.string().optional().nullable(),
 });
+
+async function payloadFromRequest(req: Request) {
+  const contentType = req.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    return {
+      data: await req.json().catch(() => null),
+      files: [] as File[],
+    };
+  }
+
+  const form = await req.formData();
+  const raw = form.get("property");
+  const data = typeof raw === "string" ? JSON.parse(raw) : null;
+  const files = form.getAll("images").filter((file): file is File => file instanceof File);
+  return { data, files };
+}
+
+async function relationError(data: z.infer<typeof schema>) {
+  const [locationCount, propertyTypeCount, builderCount, amenityCount] = await Promise.all([
+    data.locationId ? prisma.location.count({ where: { id: data.locationId } }) : Promise.resolve(1),
+    data.propertyTypeId ? prisma.propertyType.count({ where: { id: data.propertyTypeId } }) : Promise.resolve(1),
+    data.builderId ? prisma.builder.count({ where: { id: data.builderId } }) : Promise.resolve(1),
+    data.amenityIds?.length
+      ? prisma.amenity.count({ where: { id: { in: data.amenityIds } } })
+      : Promise.resolve(0),
+  ]);
+  if (locationCount !== 1) return "Location not found";
+  if (propertyTypeCount !== 1) return "Property type not found";
+  if (data.builderId && builderCount !== 1) return "Builder not found";
+  if (data.amenityIds?.length && amenityCount !== new Set(data.amenityIds).size) return "One or more amenities are invalid";
+  return null;
+}
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const user = await requireStaff();
@@ -50,15 +95,53 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const user = await requireStaff();
   if (!user) return unauthorized();
   const { id } = await ctx.params;
-  const existing = await prisma.property.findFirst({ where: { id, deletedAt: null } });
+  const existing = await prisma.property.findFirst({
+    where: { id, deletedAt: null },
+    include: { images: true, amenities: true, features: true },
+  });
   if (!existing) return jsonError("Not found", 404);
 
-  const parsed = schema.safeParse(await req.json().catch(() => null));
+  let body: Awaited<ReturnType<typeof payloadFromRequest>>;
+  try {
+    body = await payloadFromRequest(req);
+  } catch {
+    return jsonError("Invalid property payload");
+  }
+
+  const parsed = schema.safeParse(body.data);
   if (!parsed.success) return jsonError(parsed.error.issues[0]?.message ?? "Invalid data");
+  const relError = await relationError(parsed.data);
+  if (relError) return jsonError(relError);
 
   const data = parsed.data;
-  const updated = await prisma.$transaction(async (tx) => {
-    if (data.images) {
+  const usingImageManager = Boolean(data.existingImages) || body.files.length > 0;
+  const keepImageIds = new Set(data.existingImages?.map((image) => image.id) ?? []);
+  const uploaded: UploadedPropertyImage[] = [];
+  const removedImages = usingImageManager ? existing.images.filter((image) => !keepImageIds.has(image.id)) : [];
+  const finalImageCount = usingImageManager ? keepImageIds.size + body.files.length : data.images?.length;
+
+  if (finalImageCount != null) {
+    if (finalImageCount < 1) return jsonError("A property must have at least one image");
+    if (finalImageCount > MAX_PROPERTY_IMAGES) return jsonError(`A property can have at most ${MAX_PROPERTY_IMAGES} images`);
+  }
+
+  if (usingImageManager) {
+    const trustedIds = new Set(existing.images.map((image) => image.id));
+    if ([...keepImageIds].some((imageId) => !trustedIds.has(imageId))) return jsonError("Invalid image selection");
+    try {
+      for (const [idx, file] of body.files.entries()) {
+        uploaded.push(await uploadPropertyImageToS3(file, id, keepImageIds.size + idx, keepImageIds.size === 0 && idx === 0));
+      }
+    } catch (error) {
+      await Promise.allSettled(uploaded.map((image) => deleteS3Object(image.key)));
+      return jsonError(error instanceof Error ? error.message : "Image upload failed");
+    }
+  }
+
+  let updated;
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+    if (!usingImageManager && data.images) {
       await tx.propertyImage.deleteMany({ where: { propertyId: id } });
       await tx.propertyImage.createMany({
         data: data.images.map((url, idx) => ({
@@ -70,12 +153,40 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         })),
       });
     }
+    if (usingImageManager) {
+      await tx.propertyImage.deleteMany({ where: { propertyId: id, id: { notIn: [...keepImageIds] } } });
+      for (const image of data.existingImages ?? []) {
+        await tx.propertyImage.update({
+          where: { id: image.id },
+          data: { sortOrder: image.sortOrder, isCover: image.isCover },
+        });
+      }
+      if (uploaded.length) {
+        await tx.propertyImage.createMany({
+          data: uploaded.map((image, idx) => ({
+            propertyId: id,
+            url: image.url,
+            publicId: image.key,
+            alt: data.title ?? existing.title,
+            sortOrder: keepImageIds.size + idx,
+            isCover: keepImageIds.size === 0 && idx === 0,
+          })),
+        });
+      }
+    }
     if (data.amenityIds) {
       await tx.propertyAmenity.deleteMany({ where: { propertyId: id } });
       if (data.amenityIds.length) {
         await tx.propertyAmenity.createMany({
-          data: data.amenityIds.map((amenityId) => ({ propertyId: id, amenityId })),
+          data: [...new Set(data.amenityIds)].map((amenityId) => ({ propertyId: id, amenityId })),
         });
+      }
+    }
+    if (data.features) {
+      await tx.propertyFeature.deleteMany({ where: { propertyId: id } });
+      const labels = data.features.map((label) => label.trim()).filter(Boolean);
+      if (labels.length) {
+        await tx.propertyFeature.createMany({ data: labels.map((label) => ({ propertyId: id, label })) });
       }
     }
     return tx.property.update({
@@ -96,13 +207,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         bathrooms: data.bathrooms,
         balconies: data.balconies,
         area: data.area,
+        areaUnit: data.areaUnit,
+        carpetArea: data.carpetArea,
         locality: data.locality,
         locationId: data.locationId,
         city: data.city,
+        postalCode: data.postalCode,
+        latitude: data.latitude,
+        longitude: data.longitude,
         address: data.locality && data.city ? `${data.locality}, ${data.city}` : undefined,
         furnishing: data.furnishing as Furnishing | undefined,
         possession: data.possession as Possession | undefined,
+        possessionDate: data.possessionDate,
         reraNumber: data.reraNumber,
+        floor: data.floor,
+        totalFloors: data.totalFloors,
+        facing: data.facing,
+        parking: data.parking,
         tagline: data.tagline,
         builderId: data.builderId,
         updatedById: user.id,
@@ -111,6 +232,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       },
     });
   });
+  } catch (error) {
+    await Promise.allSettled(uploaded.map((image) => deleteS3Object(image.key)));
+    return jsonError(error instanceof Error ? error.message : "Property update failed");
+  }
+
+  if (removedImages.length) {
+    await Promise.allSettled(removedImages.map((image) => deleteS3Object(image.publicId)));
+  }
 
   const action =
     data.status === "PUBLISHED" && existing.status !== "PUBLISHED"
@@ -119,6 +248,22 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         ? "PROPERTY_UNPUBLISHED"
         : "PROPERTY_UPDATED";
 
-  await writeAudit({ actorId: user.id, action, entityType: "Property", entityId: id });
+  const changedFields = Object.entries(data)
+    .filter(([key, value]) => value !== undefined && !["images", "existingImages", "amenityIds", "features"].includes(key))
+    .map(([key]) => key);
+  await writeAudit({
+    actorId: user.id,
+    action,
+    entityType: "Property",
+    entityId: id,
+    metadata: {
+      propertyTitle: updated.title,
+      changedFields,
+      imagesAdded: uploaded.length,
+      imagesRemoved: removedImages.length,
+      amenitiesUpdated: data.amenityIds != null,
+      featuresUpdated: data.features != null,
+    },
+  });
   return Response.json({ property: updated });
 }

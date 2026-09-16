@@ -98,7 +98,7 @@ export function HeroSlider({
               />
             </motion.div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#061827] via-[#061827]/45 to-[#061827]/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/45 to-navy/20" />
         </motion.div>
       </AnimatePresence>
 

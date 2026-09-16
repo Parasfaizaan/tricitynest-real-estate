@@ -15,6 +15,9 @@ export async function GET() {
       id: u.id,
       email: u.email,
       name: u.name,
+      phone: u.phone,
+      profilePhotoUrl: u.profilePhotoUrl,
+      socialLinks: u.socialLinks,
       role: u.role,
       active: u.active,
       createdAt: u.createdAt,
@@ -51,5 +54,15 @@ export async function POST(req: Request) {
     entityId: created.id,
     metadata: { email: created.email, role: created.role },
   });
-  return Response.json({ user: { id: created.id, email: created.email, name: created.name, role: created.role } });
+  return Response.json({
+    user: {
+      id: created.id,
+      email: created.email,
+      name: created.name,
+      phone: created.phone,
+      profilePhotoUrl: created.profilePhotoUrl,
+      socialLinks: created.socialLinks,
+      role: created.role,
+    },
+  });
 }

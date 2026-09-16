@@ -6,7 +6,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PropertyCard, type CardProperty } from "@/components/property/card";
 import { Button } from "@/components/ui/button";
 import { SlidersHorizontal, X } from "lucide-react";
-import { Stagger, StaggerItem } from "@/components/motion/reveal";
 import { motionDurations, motionEase } from "@/components/motion/variants";
 
 type Loc = { name: string; slug: string };
@@ -48,14 +47,22 @@ export function PropertiesBrowser({
     q: filters.q ?? "",
   });
 
-  function apply(extra?: Record<string, string>) {
-    const merged = { ...form, ...extra };
+  function pushProperties(source: Record<string, string | undefined>) {
     const params = new URLSearchParams();
-    Object.entries(merged).forEach(([k, v]) => {
+    Object.entries(source).forEach(([k, v]) => {
       if (v) params.set(k, v);
     });
     router.push(`/properties?${params.toString()}`);
+  }
+
+  function apply(extra?: Record<string, string>) {
+    const merged = { ...form, ...extra };
+    pushProperties(merged);
     setOpen(false);
+  }
+
+  function goToPage(nextPage: number) {
+    pushProperties({ ...filters, page: String(nextPage) });
   }
 
   const FilterFields = (
@@ -138,7 +145,7 @@ export function PropertiesBrowser({
         </div>
         <div className="mt-8 grid gap-8 lg:grid-cols-[280px_1fr]">
           <aside className="hidden lg:block">
-            <div className="card-surface sticky top-28 p-5">{FilterFields}</div>
+            <div className="card-surface sticky top-28 max-h-[calc(100dvh-8rem)] overflow-y-auto p-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{FilterFields}</div>
           </aside>
           <div>
             <div className="mb-4 flex lg:hidden">
@@ -149,20 +156,19 @@ export function PropertiesBrowser({
             {initial.length === 0 ? (
               <div className="card-surface p-12 text-center text-ink-soft">No properties match these filters.</div>
             ) : (
-              <Stagger className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-6 sm:grid-cols-2">
                 {initial.map((p) => (
-                  <StaggerItem key={p.slug}>
-                    <PropertyCard property={p} />
-                  </StaggerItem>
+                  <PropertyCard key={p.slug} property={p} reveal={false} />
                 ))}
-              </Stagger>
+              </div>
             )}
             {pages > 1 && (
               <div className="mt-10 flex justify-center gap-2">
                 {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
                   <button
                     key={n}
-                    onClick={() => apply({ page: String(n) })}
+                    type="button"
+                    onClick={() => goToPage(n)}
                     className={`h-11 w-11 rounded-full ${n === page ? "bg-navy text-white" : "border border-line bg-white"}`}
                   >
                     {n}
@@ -183,7 +189,7 @@ export function PropertiesBrowser({
           transition={{ duration: motionDurations.button, ease: motionEase }}
         >
           <motion.div
-            className="ml-auto h-full max-w-sm overflow-y-auto rounded-[22px] bg-white p-5"
+            className="ml-auto h-full max-w-sm overflow-y-auto rounded-[22px] bg-white p-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             initial={reduce ? false : { opacity: 0, x: 28 }}
             animate={{ opacity: 1, x: 0 }}
             exit={reduce ? undefined : { opacity: 0, x: 24 }}
