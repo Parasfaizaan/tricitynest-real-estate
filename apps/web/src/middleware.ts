@@ -26,7 +26,7 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith("/admin") || pathname.startsWith("/super-admin")) {
     if (!session) {
       const url = req.nextUrl.clone();
-      url.pathname = "/login";
+      url.pathname = "/staff-login";
       url.searchParams.set("next", pathname);
       return NextResponse.redirect(url);
     }

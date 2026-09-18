@@ -16,20 +16,9 @@ export async function hasPriceAccess() {
   if (session) {
     const user = await prisma.user.findUnique({
       where: { id: session.id },
-      select: { active: true, email: true, phone: true },
+      select: { active: true },
     });
-    if (user?.active) {
-      const lead = await prisma.lead.findFirst({
-        where: {
-          OR: [
-            { email: user.email.toLowerCase() },
-            ...(user.phone ? [{ phone: user.phone }] : []),
-          ],
-        },
-        select: { id: true },
-      });
-      if (lead) return true;
-    }
+    if (user?.active) return true;
   }
 
   const jar = await cookies();

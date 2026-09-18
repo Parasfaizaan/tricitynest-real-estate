@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ProfilePhotoInput } from "@/components/forms/profile-photo-input";
+import { isPhoneOnlyEmail } from "@/lib/phone";
 
 type UserProfile = {
   name?: string;
@@ -31,6 +32,7 @@ export function ProfileForm({ user }: { user: UserProfile }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: fd.get("name"),
+        email: fd.get("email"),
         phone: fd.get("phone"),
         profilePhotoUrl: fd.get("profilePhotoUrl"),
         socialLinks: fd.get("socialLinks"),
@@ -50,10 +52,12 @@ export function ProfileForm({ user }: { user: UserProfile }) {
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
       <ProfilePhotoInput defaultValue={user.profilePhotoUrl} userName={user.name} onError={setError} />
-      <div>
-        <p className="text-xs uppercase tracking-wider text-ink-soft">Email</p>
-        <p className="mt-1 text-sm font-medium text-navy">{user.email}</p>
-      </div>
+      <input
+        name="email"
+        type="email"
+        defaultValue={isPhoneOnlyEmail(user.email) ? "" : user.email}
+        placeholder="Email optional"
+      />
       <input name="name" required defaultValue={user.name} placeholder="Full name" />
       <input name="phone" required defaultValue={user.phone ?? ""} placeholder="Phone number" />
       <textarea name="socialLinks" rows={4} defaultValue={user.socialLinks ?? ""} placeholder="Social links optional, one per line" />

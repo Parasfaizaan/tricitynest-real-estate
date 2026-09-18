@@ -4,7 +4,7 @@ import { AdminShell } from "@/components/admin/admin-shell";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  if (!user || !isStaff(user.role)) redirect("/login?next=/admin");
+  if (!user || !isStaff(user.role)) redirect("/staff-login?next=/admin");
   return (
     <AdminShell role={user.role} name={user.name}>
       {children}

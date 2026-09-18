@@ -39,6 +39,9 @@ export async function readSession(): Promise<SessionUser | null> {
       email: String(payload.email),
       name: String(payload.name ?? ""),
       role: payload.role as Role,
+      phone: payload.phone ? String(payload.phone) : null,
+      profilePhotoUrl: payload.profilePhotoUrl ? String(payload.profilePhotoUrl) : null,
+      socialLinks: payload.socialLinks ? String(payload.socialLinks) : null,
     };
   } catch {
     return null;

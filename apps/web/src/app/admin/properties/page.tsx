@@ -81,7 +81,7 @@ export default async function AdminPropertiesPage({ searchParams }: { searchPara
             <Link
               key={n}
               href={`/admin/properties?page=${n}`}
-              className={`grid h-10 w-10 place-items-center rounded-full text-sm ${n === page ? "bg-navy text-white" : "border border-line bg-white text-navy"}`}
+              className={`grid h-10 w-10 place-items-center rounded-full text-sm ${n === page ? "bg-navy !text-white" : "border border-line bg-white text-navy"}`}
             >
               {n}
             </Link>
