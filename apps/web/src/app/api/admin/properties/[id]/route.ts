@@ -22,6 +22,7 @@ const schema = z.object({
   listingType: z.string().optional().nullable(),
   sellerName: z.string().optional().nullable(),
   sellerPhone: z.string().optional().nullable(),
+  sellerPropertyAddress: z.string().optional().nullable(),
   bhk: z.number().optional().nullable(),
   bedrooms: z.number().optional().nullable(),
   bathrooms: z.number().optional().nullable(),
@@ -215,7 +216,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         await tx.propertyFeature.createMany({ data: labels.map((label) => ({ propertyId: id, label })) });
       }
     }
-    return tx.property.update({
+    const row = await tx.property.update({
       where: { id },
       data: {
         title: data.title,
@@ -229,30 +230,58 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         price: data.price,
         priceMax: data.priceMax,
         negotiable: data.negotiable,
+        listingType: data.listingType,
+        sellerName: data.sellerName,
+        sellerPhone: data.sellerPhone,
+        bhk: data.bhk,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
         balconies: data.balconies,
         area: data.area,
         areaUnit: data.areaUnit,
+        superArea: data.superArea,
+        builtUpArea: data.builtUpArea,
         carpetArea: data.carpetArea,
+        otherRooms: data.otherRooms,
+        furnishingItems: data.furnishingItems,
         locality: data.locality,
+        sector: data.sector,
+        projectName: data.projectName,
         locationId: data.locationId,
         city: data.city,
         postalCode: data.postalCode,
         latitude: data.latitude,
         longitude: data.longitude,
         address:
-          data.locality && data.city
-            ? [data.projectName, data.sector || data.locality, data.city].filter(Boolean).join(", ")
-            : undefined,
+          data.listingType === "RESALE" && data.sellerPropertyAddress
+            ? data.sellerPropertyAddress
+            : data.locality && data.city
+              ? [data.projectName, data.sector || data.locality, data.city].filter(Boolean).join(", ")
+              : undefined,
         furnishing: data.furnishing as Furnishing | undefined,
         possession: data.possession as Possession | undefined,
         possessionDate: data.possessionDate,
+        propertyAge: data.propertyAge,
         reraNumber: data.reraNumber,
         floor: data.floor,
+        floorLabel: data.floorLabel,
         totalFloors: data.totalFloors,
         facing: data.facing,
         parking: data.parking,
+        coveredParking: data.coveredParking,
+        openParking: data.openParking,
+        plotLength: data.plotLength,
+        plotBreadth: data.plotBreadth,
+        floorsAllowed: data.floorsAllowed,
+        boundaryWall: data.boundaryWall,
+        openSides: data.openSides,
+        constructionDone: data.constructionDone,
+        commercialSubtype: data.commercialSubtype,
+        locatedInside: data.locatedInside,
+        washroomType: data.washroomType,
+        parkingType: data.parkingType,
+        entranceWidth: data.entranceWidth,
+        ceilingHeight: data.ceilingHeight,
         tagline: data.tagline,
         builderId: data.builderId,
         updatedById: user.id,
@@ -264,6 +293,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         title: true,
       },
     });
+    if (data.sellerPropertyAddress !== undefined) {
+      await tx.$executeRaw`UPDATE "Property" SET "sellerPropertyAddress" = ${data.sellerPropertyAddress} WHERE "id" = ${id}`;
+    }
+    return row;
   });
   } catch (error) {
     await Promise.allSettled(uploaded.map((image) => deleteS3Object(image.key)));

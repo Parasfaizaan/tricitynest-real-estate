@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   Bath,
   Building2,
@@ -55,6 +55,8 @@ type Initial = {
   listingType?: string | null;
   sellerName?: string | null;
   sellerPhone?: string | null;
+  sellerPropertyAddress?: string | null;
+  address?: string | null;
   bhk?: number | null;
   locality?: string;
   sector?: string | null;
@@ -108,6 +110,8 @@ type Initial = {
 
 const MIN_IMAGES = 5;
 const MAX_IMAGES = 15;
+const MAX_IMAGE_SIZE = 5_000_000;
+const MAX_IMAGE_SIZE_MB = Math.floor(MAX_IMAGE_SIZE / 1_000_000);
 
 const steps = [
   { label: "Step 1", sections: ["1. Listing", "2. Category", "3. Location"] },
@@ -146,6 +150,41 @@ const furnishingItems = [
   "Chimney",
   "Dining Table",
 ];
+const furnishingAmenityKeywords = [
+  "air conditioning",
+  "ac",
+  "tv",
+  "bed",
+  "wardrobe",
+  "geyser",
+  "light",
+  "fan",
+  "sofa",
+  "washing machine",
+  "stove",
+  "fridge",
+  "water purifier",
+  "microwave",
+  "modular kitchen",
+  "chimney",
+  "dining",
+  "servant room",
+];
+
+function isIndependentFloorType(name: string) {
+  return /independent\s*floor/i.test(name);
+}
+
+function propertyTypeLabel(name: string) {
+  if (/apartment/i.test(name)) return "Apartment/Independent Room";
+  if (/villa/i.test(name)) return "Villa/Kotthi";
+  return name;
+}
+
+function isFurnishingAmenity(name: string) {
+  const value = name.toLowerCase();
+  return furnishingAmenityKeywords.some((keyword) => value.includes(keyword));
+}
 
 function numberOrNull(value: FormDataEntryValue | null) {
   if (value == null || value === "") return null;
@@ -170,6 +209,57 @@ function moneyPerArea(price: number, area: number) {
   return Math.round(price / area).toLocaleString("en-IN");
 }
 
+const smallNumberWords = [
+  "",
+  "One",
+  "Two",
+  "Three",
+  "Four",
+  "Five",
+  "Six",
+  "Seven",
+  "Eight",
+  "Nine",
+  "Ten",
+  "Eleven",
+  "Twelve",
+  "Thirteen",
+  "Fourteen",
+  "Fifteen",
+  "Sixteen",
+  "Seventeen",
+  "Eighteen",
+  "Nineteen",
+];
+const tensNumberWords = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+function twoDigitWords(value: number) {
+  if (value < 20) return smallNumberWords[value];
+  return [tensNumberWords[Math.floor(value / 10)], smallNumberWords[value % 10]].filter(Boolean).join(" ");
+}
+
+function threeDigitWords(value: number) {
+  const hundred = Math.floor(value / 100);
+  const rest = value % 100;
+  return [hundred ? `${smallNumberWords[hundred]} Hundred` : "", rest ? twoDigitWords(rest) : ""].filter(Boolean).join(" ");
+}
+
+function priceInWords(value: number) {
+  const amount = Math.floor(value || 0);
+  if (!amount) return "";
+  const crore = Math.floor(amount / 10000000);
+  const lakh = Math.floor((amount % 10000000) / 100000);
+  const thousand = Math.floor((amount % 100000) / 1000);
+  const rest = amount % 1000;
+  const words = [
+    crore ? `${threeDigitWords(crore)} Crore` : "",
+    lakh ? `${threeDigitWords(lakh)} Lakh` : "",
+    thousand ? `${threeDigitWords(thousand)} Thousand` : "",
+    rest ? threeDigitWords(rest) : "",
+  ].filter(Boolean);
+  return words.length ? `Rupees ${words.join(" ")}` : "";
+}
+
 function initialSubLocation(city?: string, value?: string | null) {
   const text = String(value || "").trim();
   if (!city || !text) return { subLocation: "", otherLocation: "" };
@@ -177,10 +267,17 @@ function initialSubLocation(city?: string, value?: string | null) {
   return exists ? { subLocation: text, otherLocation: "" } : { subLocation: "Other", otherLocation: text };
 }
 
-export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) {
+function uniqueProjectNames(names: (string | null | undefined)[]) {
+  return Array.from(new Set(names.map((name) => String(name || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+}
+
+export function PropertyForm({ tax, initial, projectNames = [] }: { tax: Tax; initial?: Initial; projectNames?: string[] }) {
   const router = useRouter();
   const editing = Boolean(initial?.id);
   const formRef = useRef<HTMLFormElement>(null);
+  const initialProjectName = String(initial?.projectName || "").trim();
+  const initialProjectOptions = uniqueProjectNames(projectNames);
+  const initialProjectChoice = initialProjectName && initialProjectOptions.includes(initialProjectName) ? initialProjectName : initialProjectName ? "Other" : "";
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -198,6 +295,11 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
   const [price, setPrice] = useState(initial?.price ?? 0);
   const [superArea, setSuperArea] = useState(initial?.superArea ?? initial?.area ?? 0);
   const [areaUnit, setAreaUnit] = useState(initial?.areaUnit ?? "sq.ft.");
+  const [projectOptions, setProjectOptions] = useState(initialProjectOptions);
+  const [projectNameChoice, setProjectNameChoice] = useState(initialProjectChoice);
+  const [otherProjectName, setOtherProjectName] = useState(initialProjectChoice === "Other" ? initialProjectName : "");
+  const [propertyTitle, setPropertyTitle] = useState(initial?.title ?? "");
+  const [titleEdited, setTitleEdited] = useState(Boolean(initial?.title));
   const [dragId, setDragId] = useState<string | null>(null);
   const [images, setImages] = useState<ImageItem[]>(() =>
     (initial?.images ?? [])
@@ -216,10 +318,16 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
     const filtered = tax.propertyTypes.filter((type) => type.category === category);
     return filtered.length ? filtered : tax.propertyTypes;
   }, [category, tax.propertyTypes]);
+  const visibleTypeOptions = useMemo(() => typeOptions.filter((type) => !isIndependentFloorType(type.name)), [typeOptions]);
 
-  const activeTypeId = propertyTypeId || initial?.propertyTypeId || typeOptions[0]?.id || "";
-  const activeType = tax.propertyTypes.find((type) => type.id === activeTypeId) ?? typeOptions[0];
+  const rawActiveType = tax.propertyTypes.find((type) => type.id === (propertyTypeId || initial?.propertyTypeId));
+  const apartmentType = visibleTypeOptions.find((type) => /apartment/i.test(type.name));
+  const activeTypeId = isIndependentFloorType(rawActiveType?.name ?? "")
+    ? apartmentType?.id ?? visibleTypeOptions[0]?.id ?? ""
+    : propertyTypeId || initial?.propertyTypeId || visibleTypeOptions[0]?.id || "";
+  const activeType = tax.propertyTypes.find((type) => type.id === activeTypeId) ?? visibleTypeOptions[0];
   const activeTypeName = activeType?.name ?? "Property";
+  const activeTypeDisplayName = propertyTypeLabel(activeTypeName);
   const isHouse = /villa|house/i.test(activeTypeName);
   const isPlot = /plot|land|sco/i.test(activeTypeName);
   const isCommercial = category === "COMMERCIAL";
@@ -235,8 +343,12 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
   const generatedTitle = useMemo(() => {
     const bhkText = bhk ? `${bhk} BHK ` : "";
     const place = [selectedSubLocation, selectedCity].filter(Boolean).join(", ");
-    return `${bhkText}${activeTypeName}${place ? ` in ${place}` : ""}`.trim();
-  }, [activeTypeName, bhk, selectedCity, selectedSubLocation]);
+    return `${bhkText}${activeTypeDisplayName}${place ? ` in ${place}` : ""}`.trim();
+  }, [activeTypeDisplayName, bhk, selectedCity, selectedSubLocation]);
+
+  useEffect(() => {
+    if (!titleEdited) setPropertyTitle(generatedTitle);
+  }, [generatedTitle, titleEdited]);
 
   function normalize(next: ImageItem[]) {
     const hasCover = next.some((image) => image.isCover);
@@ -251,8 +363,15 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
     if (!files?.length) return;
     setError("");
     const allowed = Math.max(0, MAX_IMAGES - images.length);
-    const incoming = Array.from(files).slice(0, allowed);
-    if (incoming.length < files.length) setError(`Only ${MAX_IMAGES} photos can be added.`);
+    const selectedFiles = Array.from(files);
+    const oversize = selectedFiles.filter((file) => file.size > MAX_IMAGE_SIZE);
+    const incoming = selectedFiles.filter((file) => file.size <= MAX_IMAGE_SIZE).slice(0, allowed);
+    if (oversize.length) {
+      setError(`Each property photo must be ${MAX_IMAGE_SIZE_MB} MB or smaller.`);
+    } else if (incoming.length < selectedFiles.length) {
+      setError(`Only ${MAX_IMAGES} photos can be added.`);
+    }
+    if (!incoming.length) return;
     const selected = incoming.map((file, index) => ({
       kind: "new" as const,
       id: `${file.name}-${file.lastModified}-${index}-${crypto.randomUUID()}`,
@@ -297,6 +416,18 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
     setOtherLocation("");
   }
 
+  function addProjectName() {
+    const nextName = otherProjectName.trim();
+    if (!nextName) {
+      setError("Please enter the project name.");
+      return;
+    }
+    setProjectOptions((current) => uniqueProjectNames([...current, nextName]));
+    setProjectNameChoice(nextName);
+    setOtherProjectName("");
+    setError("");
+  }
+
   function positiveNumber(fd: FormData, name: string) {
     const value = numberOrNull(fd.get(name));
     return value != null && value > 0;
@@ -314,11 +445,12 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
       if (listingType === "RESALE") {
         if (!textOrNull(fd.get("sellerName"))) return "Please enter the seller name.";
         if (!textOrNull(fd.get("sellerPhone"))) return "Please enter the seller contact number.";
+        if (!textOrNull(fd.get("sellerPropertyAddress"))) return "Please enter the seller property address.";
       }
-      if (!fd.get("transactionType")) return "Please select a transaction type.";
       if (!activeTypeId) return "Please select a property type.";
       if (!selectedCity) return "Please select a city.";
       if (!cleanSubLocation) return "Please select a sector or sub-location.";
+      if (!textOrNull(fd.get("locality"))) return "Please enter the locality.";
       if (!savedCityLocationId) return `Location taxonomy is missing for ${selectedCity}. Add ${selectedCity} in Admin Taxonomies first.`;
     }
 
@@ -398,6 +530,8 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
       return;
     }
     const cleanSubLocation = subLocation === "Other" ? otherLocation.trim() : subLocation;
+    const cleanLocality = textOrNull(fd.get("locality"));
+    const cleanProjectName = projectNameChoice === "Other" ? textOrNull(fd.get("otherProjectName")) : textOrNull(fd.get("projectName"));
     if (!selectedCity) {
       setStep(0);
       setError("Please select a city.");
@@ -406,6 +540,11 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
     if (!cleanSubLocation) {
       setStep(0);
       setError("Please select a sector or sub-location.");
+      return;
+    }
+    if (!cleanLocality) {
+      setStep(0);
+      setError("Please enter the locality.");
       return;
     }
     if (!savedCityLocationId) {
@@ -437,10 +576,11 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
       listingType,
       sellerName: listingType === "RESALE" ? textOrNull(fd.get("sellerName")) : null,
       sellerPhone: listingType === "RESALE" ? textOrNull(fd.get("sellerPhone")) : null,
+      sellerPropertyAddress: listingType === "RESALE" ? textOrNull(fd.get("sellerPropertyAddress")) : null,
       bhk: numberOrNull(fd.get("bhk")),
-      locality: cleanSubLocation,
+      locality: cleanLocality,
       sector: cleanSubLocation,
-      projectName: null,
+      projectName: cleanProjectName,
       locationId: savedCityLocationId,
       city: selectedCity,
       postalCode: null,
@@ -530,6 +670,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
 
   const selectedOtherRooms = splitList(initial?.otherRooms);
   const selectedFurnishingItems = splitList(initial?.furnishingItems);
+  const amenityOptions = tax.amenities.filter((amenity) => !isFurnishingAmenity(amenity.name));
   const percent = Math.round(((step + 1) / steps.length) * 100);
 
   return (
@@ -569,21 +710,26 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
                 value={listingType}
                 onChange={setListingType}
                 options={[
-                  ["RESALE", "Resale"],
                   ["FRESH", "Fresh/New Property"],
+                  ["RESALE", "Resale"],
                 ]}
               />
+              <input type="hidden" name="transactionType" value={initial?.transactionType ?? "BUY"} />
               {listingType === "RESALE" && (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <input name="sellerName" defaultValue={initial?.sellerName ?? ""} placeholder="Seller name" />
-                  <input name="sellerPhone" defaultValue={initial?.sellerPhone ?? ""} placeholder="Seller contact number" />
+                <div className="grid gap-3">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Seller name">
+                      <input name="sellerName" defaultValue={initial?.sellerName ?? ""} placeholder="Seller name" />
+                    </Field>
+                    <Field label="Seller contact number">
+                      <input name="sellerPhone" defaultValue={initial?.sellerPhone ?? ""} placeholder="Seller contact number" maxLength={10} />
+                    </Field>
+                  </div>
+                  <Field label="Seller property address">
+                    <input name="sellerPropertyAddress" defaultValue={initial?.sellerPropertyAddress ?? initial?.address ?? ""} placeholder="Seller property address" />
+                  </Field>
                 </div>
               )}
-              <select name="transactionType" defaultValue={initial?.transactionType ?? "BUY"}>
-                <option value="BUY">Buy</option>
-                <option value="RENT">Rent / Lease</option>
-                <option value="INVEST">Invest</option>
-              </select>
             </Section>
           </div>
 
@@ -598,13 +744,15 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
                   ["COMMERCIAL", "Commercial"],
                 ]}
               />
-              <select name="propertyTypeId" value={activeTypeId} onChange={(e) => setPropertyTypeId(e.target.value)} required>
-                {typeOptions.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
+              <Field label="Property type">
+                <select name="propertyTypeId" value={activeTypeId} onChange={(e) => setPropertyTypeId(e.target.value)} required>
+                  {visibleTypeOptions.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {propertyTypeLabel(type.name)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               {isCommercial && (
                 <p className="text-sm text-ink-soft">
                   Commercial is enabled with basic shop/showroom/office details. Deeper commercial-only fields can be expanded after this residential workflow is approved.
@@ -649,6 +797,44 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
               {subLocation === "Other" && (
                 <input value={otherLocation} onChange={(e) => setOtherLocation(e.target.value)} placeholder="Other location / locality" />
               )}
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Project Name">
+                  <select
+                    name="projectName"
+                    value={projectNameChoice}
+                    onChange={(e) => {
+                      setProjectNameChoice(e.target.value);
+                      if (e.target.value !== "Other") setOtherProjectName("");
+                    }}
+                  >
+                    <option value="">Select project name</option>
+                    {projectOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                    <option value="Other">Other</option>
+                  </select>
+                </Field>
+                <Field label="Locality">
+                  <input name="locality" required defaultValue={initial?.locality ?? ""} placeholder="Locality" />
+                </Field>
+              </div>
+              {projectNameChoice === "Other" && (
+                <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                  <Field label="Other Project Name">
+                    <input
+                      name="otherProjectName"
+                      value={otherProjectName}
+                      onChange={(e) => setOtherProjectName(e.target.value)}
+                      placeholder="Project name"
+                    />
+                  </Field>
+                  <button className="self-end rounded-full bg-navy px-6 py-3 text-sm font-semibold text-white" type="button" onClick={addProjectName}>
+                    Add
+                  </button>
+                </div>
+              )}
             </Section>
           </div>
 
@@ -659,29 +845,46 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
                   <SelectNumber name="bhk" label="BHK" min={1} max={10} defaultValue={initial?.bhk ?? initial?.bedrooms ?? undefined} onChange={setBhk} />
                   <SelectNumber name="bedrooms" label="Bedrooms" min={1} max={10} defaultValue={initial?.bedrooms ?? undefined} />
                   <SelectNumber name="bathrooms" label="Bathrooms" min={0} max={10} defaultValue={initial?.bathrooms ?? undefined} />
-                  <SelectNumber name="balconies" label="Balconies" min={0} max={10} defaultValue={initial?.balconies ?? undefined} />
+                  <Field label="Balconies">
+                    <select name="balconies" defaultValue={initial?.balconies && initial.balconies > 3 ? 4 : initial?.balconies ?? ""}>
+                      <option value="">Select balconies</option>
+                      <option value="0">0</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">More than 3</option>
+                    </select>
+                  </Field>
                 </div>
               )}
               <div className="grid gap-3 md:grid-cols-3">
-                <input
-                  name="superArea"
-                  type="number"
-                  min="1"
-                  required
-                  defaultValue={initial?.superArea ?? initial?.area ?? undefined}
-                  onChange={(e) => setSuperArea(Number(e.target.value))}
-                  placeholder={isPlot ? "Plot area" : "Super area"}
-                />
-                <select name="areaUnit" value={areaUnit} onChange={(e) => setAreaUnit(e.target.value)}>
-                  {areaUnits.map((unit) => (
-                    <option key={unit} value={unit}>
-                      {unit}
-                    </option>
-                  ))}
-                </select>
-                <input name="carpetArea" type="number" min="1" defaultValue={initial?.carpetArea ?? undefined} placeholder="Carpet area (optional)" />
+                <Field label={isPlot ? "Plot area" : "Super area"}>
+                  <input
+                    name="superArea"
+                    type="number"
+                    min="1"
+                    required
+                    defaultValue={initial?.superArea ?? initial?.area ?? undefined}
+                    onChange={(e) => setSuperArea(Number(e.target.value))}
+                    placeholder={isPlot ? "Plot area" : "Super area"}
+                  />
+                </Field>
+                <Field label="Area unit">
+                  <select name="areaUnit" value={areaUnit} onChange={(e) => setAreaUnit(e.target.value)}>
+                    {areaUnits.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Carpet area">
+                  <input name="carpetArea" type="number" min="1" defaultValue={initial?.carpetArea ?? undefined} placeholder="Carpet area (optional)" />
+                </Field>
                 {!isPlot && (
-                  <input name="builtUpArea" type="number" min="1" defaultValue={initial?.builtUpArea ?? undefined} placeholder="Built-up area (optional)" />
+                  <Field label="Built-up area">
+                    <input name="builtUpArea" type="number" min="1" defaultValue={initial?.builtUpArea ?? undefined} placeholder="Built-up area (optional)" />
+                  </Field>
                 )}
               </div>
               {!isCommercial && !isPlot && (
@@ -689,20 +892,24 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
               )}
               {isCommercial && (
                 <div className="grid gap-3">
-                  <select name="commercialSubtype" defaultValue={initial?.commercialSubtype ?? ""}>
-                    <option value="">Commercial subtype</option>
-                    <option value="Commercial Shops">Commercial Shops</option>
-                    <option value="Commercial Showrooms">Commercial Showrooms</option>
-                  </select>
-                  <select name="locatedInside" defaultValue={initial?.locatedInside ?? ""}>
-                    <option value="">Located inside</option>
-                    <option value="Mall">Mall</option>
-                    <option value="Commercial Project">Commercial Project</option>
-                    <option value="Residential Project">Residential Project</option>
-                    <option value="Retail Complex/Building">Retail Complex/Building</option>
-                    <option value="Market / High Street">Market / High Street</option>
-                    <option value="Others">Others</option>
-                  </select>
+                  <Field label="Commercial subtype">
+                    <select name="commercialSubtype" defaultValue={initial?.commercialSubtype ?? ""}>
+                      <option value="">Select commercial subtype</option>
+                      <option value="Commercial Shops">Commercial Shops</option>
+                      <option value="Commercial Showrooms">Commercial Showrooms</option>
+                    </select>
+                  </Field>
+                  <Field label="Located inside">
+                    <select name="locatedInside" defaultValue={initial?.locatedInside ?? ""}>
+                      <option value="">Select located inside</option>
+                      <option value="Mall">Mall</option>
+                      <option value="Commercial Project">Commercial Project</option>
+                      <option value="Residential Project">Residential Project</option>
+                      <option value="Retail Complex/Building">Retail Complex/Building</option>
+                      <option value="Market / High Street">Market / High Street</option>
+                      <option value="Others">Others</option>
+                    </select>
+                  </Field>
                   <div className="grid gap-3 md:grid-cols-2">
                     <input name="entranceWidth" type="number" min="0" defaultValue={initial?.entranceWidth ?? undefined} placeholder="Entrance width (ft.)" />
                     <input name="ceilingHeight" type="number" min="0" defaultValue={initial?.ceilingHeight ?? undefined} placeholder="Ceiling height (ft.)" />
@@ -714,30 +921,36 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
                   <input name="plotLength" type="number" min="0" defaultValue={initial?.plotLength ?? undefined} placeholder="Length of plot (ft.)" />
                   <input name="plotBreadth" type="number" min="0" defaultValue={initial?.plotBreadth ?? undefined} placeholder="Breadth of plot (ft.)" />
                   <input name="floorsAllowed" type="number" min="0" defaultValue={initial?.floorsAllowed ?? undefined} placeholder="Floors allowed for construction" />
-                  <select name="openSides" defaultValue={initial?.openSides ?? ""}>
-                    <option value="">No. of open sides</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">3+</option>
-                  </select>
-                  <select name="boundaryWall" defaultValue={initial?.boundaryWall == null ? "" : initial.boundaryWall ? "YES" : "NO"}>
-                    <option value="">Boundary wall?</option>
-                    <option value="YES">Yes</option>
-                    <option value="NO">No</option>
-                  </select>
-                  <select name="constructionDone" defaultValue={initial?.constructionDone == null ? "" : initial.constructionDone ? "YES" : "NO"}>
-                    <option value="">Any construction done?</option>
-                    <option value="YES">Yes</option>
-                    <option value="NO">No</option>
-                  </select>
+                  <Field label="Open sides">
+                    <select name="openSides" defaultValue={initial?.openSides ?? ""}>
+                      <option value="">Select open sides</option>
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="4">3+</option>
+                    </select>
+                  </Field>
+                  <Field label="Boundary wall">
+                    <select name="boundaryWall" defaultValue={initial?.boundaryWall == null ? "" : initial.boundaryWall ? "YES" : "NO"}>
+                      <option value="">Select boundary wall</option>
+                      <option value="YES">Yes</option>
+                      <option value="NO">No</option>
+                    </select>
+                  </Field>
+                  <Field label="Construction done">
+                    <select name="constructionDone" defaultValue={initial?.constructionDone == null ? "" : initial.constructionDone ? "YES" : "NO"}>
+                      <option value="">Select construction status</option>
+                      <option value="YES">Yes</option>
+                      <option value="NO">No</option>
+                    </select>
+                  </Field>
                 </div>
               )}
             </Section>
           </div>
 
           <div className={step === 1 ? "grid gap-5" : "hidden"}>
-            <Section title="Furnishing and amenities">
+            <Section title="Furnishing">
               <RadioGroup
                 name="furnishingControl"
                 value={furnishing}
@@ -751,8 +964,13 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
               {furnishing !== "UNFURNISHED" && (
                 <CheckboxGroup name="furnishingItems" options={furnishingItems} selected={selectedFurnishingItems} />
               )}
+            </Section>
+          </div>
+
+          <div className={step === 1 ? "grid gap-5" : "hidden"}>
+            <Section title="Amenities">
               <fieldset className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                {tax.amenities.map((amenity) => (
+                {amenityOptions.map((amenity) => (
                   <AmenityCheckbox
                     key={amenity.id}
                     id={amenity.id}
@@ -773,56 +991,68 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
           <div className={step === 1 ? "grid gap-5" : "hidden"}>
             <Section title="Floor details">
               <div className="grid gap-3 md:grid-cols-3">
-                <select name="totalFloors" defaultValue={initial?.totalFloors ?? ""}>
-                  <option value="">Total floors</option>
-                  {totalFloorOptions.map((floor) => (
-                    <option key={floor} value={floor}>
-                      {floor === 0 ? "Ground only" : floor}
-                    </option>
-                  ))}
-                </select>
-                {isHouse ? (
-                  <select name="floorLabel" defaultValue={initial?.floorLabel ?? ""}>
-                    <option value="">Property floor</option>
-                    <option value="Ground Floor">Ground Floor</option>
-                    <option value="Ground + 1">Ground + 1</option>
-                    <option value="Ground + 2">Ground + 2</option>
-                    <option value="Ground + 3">Ground + 3</option>
-                  </select>
-                ) : (
-                  <select name="floor" defaultValue={initial?.floor ?? ""}>
-                    <option value="">Property on floor</option>
-                    {propertyFloorOptions.map((floor) => (
-                      <option key={floor.value} value={floor.value}>
-                        {floor.label}
+                <Field label="Total floors">
+                  <select name="totalFloors" defaultValue={initial?.totalFloors ?? ""}>
+                    <option value="">Select total floors</option>
+                    {totalFloorOptions.map((floor) => (
+                      <option key={floor} value={floor}>
+                        {floor === 0 ? "Ground only" : floor}
                       </option>
                     ))}
                   </select>
+                </Field>
+                {isHouse ? (
+                  <Field label="Property floor">
+                    <select name="floorLabel" defaultValue={initial?.floorLabel ?? ""}>
+                      <option value="">Select property floor</option>
+                      <option value="Ground Floor">Ground Floor</option>
+                      <option value="Ground + 1">Ground + 1</option>
+                      <option value="Ground + 2">Ground + 2</option>
+                      <option value="Ground + 3">Ground + 3</option>
+                    </select>
+                  </Field>
+                ) : (
+                  <Field label="Property on floor">
+                    <select name="floor" defaultValue={initial?.floor ?? ""}>
+                      <option value="">Select property floor</option>
+                      {propertyFloorOptions.map((floor) => (
+                        <option key={floor.value} value={floor.value}>
+                          {floor.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
                 )}
-                <select name="facing" defaultValue={initial?.facing ?? ""}>
-                  <option value="">Facing</option>
-                  {facingOptions.map((facing) => (
-                    <option key={facing} value={facing}>
-                      {facing}
-                    </option>
-                  ))}
-                </select>
-                <select name="coveredParking" defaultValue={initial?.coveredParking ?? ""}>
-                  <option value="">Covered parking</option>
-                  {parkingCountOptions.map((count) => (
-                    <option key={count} value={count}>
-                      {count}
-                    </option>
-                  ))}
-                </select>
-                <select name="openParking" defaultValue={initial?.openParking ?? ""}>
-                  <option value="">Open parking</option>
-                  {parkingCountOptions.map((count) => (
-                    <option key={count} value={count}>
-                      {count}
-                    </option>
-                  ))}
-                </select>
+                <Field label="Facing">
+                  <select name="facing" defaultValue={initial?.facing ?? ""}>
+                    <option value="">Select facing</option>
+                    {facingOptions.map((facing) => (
+                      <option key={facing} value={facing}>
+                        {facing}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Covered parking">
+                  <select name="coveredParking" defaultValue={initial?.coveredParking ?? ""}>
+                    <option value="">Select covered parking</option>
+                    {parkingCountOptions.map((count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Open parking">
+                  <select name="openParking" defaultValue={initial?.openParking ?? ""}>
+                    <option value="">Select open parking</option>
+                    {parkingCountOptions.map((count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
               </div>
               {isHouse && (
                 <div className="grid gap-3 md:grid-cols-2">
@@ -832,19 +1062,23 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
               )}
               {isCommercial && (
                 <div className="grid gap-3 md:grid-cols-2">
-                  <select name="washroomType" defaultValue={initial?.washroomType ?? ""}>
-                    <option value="">Washroom details</option>
-                    <option value="Private washrooms">Private washrooms</option>
-                    <option value="Public washrooms">Public washrooms</option>
-                    <option value="Not Available">Not Available</option>
-                  </select>
-                  <select name="parkingType" defaultValue={initial?.parkingType ?? ""}>
-                    <option value="">Parking type</option>
-                    <option value="Private Parking">Private Parking</option>
-                    <option value="Public Parking">Public Parking</option>
-                    <option value="Multilevel Parking">Multilevel Parking</option>
-                    <option value="Not Available">Not Available</option>
-                  </select>
+                  <Field label="Washroom details">
+                    <select name="washroomType" defaultValue={initial?.washroomType ?? ""}>
+                      <option value="">Select washroom details</option>
+                      <option value="Private washrooms">Private washrooms</option>
+                      <option value="Public washrooms">Public washrooms</option>
+                      <option value="Not Available">Not Available</option>
+                    </select>
+                  </Field>
+                  <Field label="Parking type">
+                    <select name="parkingType" defaultValue={initial?.parkingType ?? ""}>
+                      <option value="">Select parking type</option>
+                      <option value="Private Parking">Private Parking</option>
+                      <option value="Public Parking">Public Parking</option>
+                      <option value="Multilevel Parking">Multilevel Parking</option>
+                      <option value="Not Available">Not Available</option>
+                    </select>
+                  </Field>
                 </div>
               )}
             </Section>
@@ -891,7 +1125,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             <Section title="Property photos">
               <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => addImages(e.target.files)} />
               <p className="text-sm text-ink-soft">
-                {images.length}/{MAX_IMAGES} uploaded. Minimum {MIN_IMAGES} photos required.
+                {images.length}/{MAX_IMAGES} uploaded. Minimum {MIN_IMAGES} photos required. Max {MAX_IMAGE_SIZE_MB} MB each.
               </p>
               {images.length > 0 && (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -926,38 +1160,57 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
 
           <div className={step === 2 ? "grid gap-5" : "hidden"}>
             <Section title="Price">
-              <div className="grid gap-3 md:grid-cols-3">
-                <input
-                  name="price"
-                  type="number"
-                  min="1"
-                  required
-                  defaultValue={initial?.price}
-                  onChange={(e) => setPrice(Number(e.target.value))}
-                  placeholder="Property price"
-                  className="h-12 min-h-0 px-4 py-0"
-                />
-                <input
-                  readOnly
-                  value={moneyPerArea(price, superArea) ? `${moneyPerArea(price, superArea)} / ${areaUnit}` : ""}
-                  placeholder={`Price / ${areaUnit}`}
-                  className="h-12 min-h-0 bg-page px-4 py-0"
-                />
-                <select name="priceTag" defaultValue={initial?.negotiable === false ? "FIXED" : "NEGOTIABLE"} className="h-12 min-h-0 px-4 py-0">
-                  <option value="NEGOTIABLE">Negotiable</option>
-                  <option value="FIXED">Fixed</option>
-                </select>
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)_minmax(220px,0.8fr)]">
+                <Field label="Expected Price">
+                  <input
+                    name="price"
+                    type="number"
+                    min="1"
+                    required
+                    defaultValue={initial?.price}
+                    onChange={(e) => setPrice(Number(e.target.value))}
+                    placeholder="Property price"
+                    className="h-12 min-h-0 px-4 py-0"
+                  />
+                </Field>
+                <Field label={`Price / ${areaUnit}`}>
+                  <input
+                    readOnly
+                    value={moneyPerArea(price, superArea) ? `${moneyPerArea(price, superArea)} / ${areaUnit}` : ""}
+                    placeholder={`Price / ${areaUnit}`}
+                    className="h-12 min-h-0 bg-page px-4 py-0"
+                  />
+                </Field>
+                <Field label="Price tag">
+                  <select name="priceTag" defaultValue={initial?.negotiable === false ? "FIXED" : "NEGOTIABLE"} className="h-12 min-h-0 px-4 py-0">
+                    <option value="NEGOTIABLE">Negotiable</option>
+                    <option value="FIXED">Fixed</option>
+                  </select>
+                </Field>
               </div>
-              <p className="text-sm text-ink-soft">
-                Price per {areaUnit}: {moneyPerArea(price, superArea) || "Enter price and area"}
+              <p className="text-base font-semibold text-ink-soft">
+                {priceInWords(price) || "Enter expected price"}
+                {moneyPerArea(price, superArea) ? ` (Rs ${moneyPerArea(price, superArea)} per ${areaUnit})` : ""}
               </p>
             </Section>
           </div>
 
           <div className={step === 2 ? "grid gap-5" : "hidden"}>
-            <Section title="Property name and description">
-              <input name="title" readOnly value={generatedTitle || initial?.title || ""} />
-              <textarea name="description" required rows={6} defaultValue={initial?.description} placeholder="Property description" />
+            <Section title="Property Name">
+              <Field label="Property Name">
+                <input
+                  name="title"
+                  value={propertyTitle}
+                  onChange={(e) => {
+                    setPropertyTitle(e.target.value);
+                    setTitleEdited(true);
+                  }}
+                  placeholder="Property name"
+                />
+              </Field>
+              <Field label="Unique Description for Property">
+                <textarea name="description" required rows={6} defaultValue={initial?.description} placeholder="Unique Description for Property" />
+              </Field>
             </Section>
           </div>
 
@@ -1108,13 +1361,15 @@ function SelectNumber({
   onChange?: (value: number) => void;
 }) {
   return (
-    <select name={name} defaultValue={defaultValue ?? ""} onChange={(e) => onChange?.(Number(e.target.value) || 0)}>
-      <option value="">{label}</option>
-      {Array.from({ length: max - min + 1 }, (_, index) => min + index).map((value) => (
-        <option key={value} value={value}>
-          {value}
-        </option>
-      ))}
-    </select>
+    <Field label={label}>
+      <select name={name} defaultValue={defaultValue ?? ""} onChange={(e) => onChange?.(Number(e.target.value) || 0)}>
+        <option value="">Select {label.toLowerCase()}</option>
+        {Array.from({ length: max - min + 1 }, (_, index) => min + index).map((value) => (
+          <option key={value} value={value}>
+            {value}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }

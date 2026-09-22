@@ -23,6 +23,7 @@ const schema = z.object({
   listingType: z.string().optional().nullable(),
   sellerName: z.string().optional().nullable(),
   sellerPhone: z.string().optional().nullable(),
+  sellerPropertyAddress: z.string().optional().nullable(),
   bhk: z.number().optional().nullable(),
   bedrooms: z.number().optional().nullable(),
   bathrooms: z.number().optional().nullable(),
@@ -165,8 +166,8 @@ export async function POST(req: Request) {
 
   let created;
   try {
-    created = await prisma.$transaction(async (tx) =>
-      tx.property.create({
+    created = await prisma.$transaction(async (tx) => {
+      const row = await tx.property.create({
         data: {
           id: propertyId,
           slug,
@@ -181,14 +182,27 @@ export async function POST(req: Request) {
           price: parsed.data.price,
           priceMax: parsed.data.priceMax ?? null,
           negotiable: parsed.data.negotiable ?? true,
+          listingType: parsed.data.listingType ?? null,
+          sellerName: parsed.data.sellerName ?? null,
+          sellerPhone: parsed.data.sellerPhone ?? null,
+          bhk: parsed.data.bhk ?? null,
           bedrooms: parsed.data.bedrooms ?? null,
           bathrooms: parsed.data.bathrooms ?? null,
           balconies: parsed.data.balconies ?? null,
           area: parsed.data.area,
           areaUnit: parsed.data.areaUnit || "sq.ft.",
+          superArea: parsed.data.superArea ?? null,
+          builtUpArea: parsed.data.builtUpArea ?? null,
           carpetArea: parsed.data.carpetArea ?? null,
-          address: [parsed.data.projectName, parsed.data.sector || parsed.data.locality, parsed.data.city].filter(Boolean).join(", "),
+          otherRooms: parsed.data.otherRooms ?? null,
+          furnishingItems: parsed.data.furnishingItems ?? null,
+          address:
+            parsed.data.listingType === "RESALE" && parsed.data.sellerPropertyAddress
+              ? parsed.data.sellerPropertyAddress
+              : [parsed.data.projectName, parsed.data.sector || parsed.data.locality, parsed.data.city].filter(Boolean).join(", "),
           locality: parsed.data.locality,
+          sector: parsed.data.sector ?? null,
+          projectName: parsed.data.projectName ?? null,
           locationId: parsed.data.locationId,
           city: parsed.data.city,
           postalCode: parsed.data.postalCode ?? null,
@@ -197,11 +211,27 @@ export async function POST(req: Request) {
           furnishing: (parsed.data.furnishing as Furnishing) ?? Furnishing.UNFURNISHED,
           possession: (parsed.data.possession as Possession) ?? Possession.READY,
           possessionDate: parsed.data.possessionDate ?? null,
+          propertyAge: parsed.data.propertyAge ?? null,
           reraNumber: parsed.data.reraNumber ?? null,
           floor: parsed.data.floor ?? null,
+          floorLabel: parsed.data.floorLabel ?? null,
           totalFloors: parsed.data.totalFloors ?? null,
           facing: parsed.data.facing ?? null,
           parking: parsed.data.parking ?? false,
+          coveredParking: parsed.data.coveredParking ?? null,
+          openParking: parsed.data.openParking ?? null,
+          plotLength: parsed.data.plotLength ?? null,
+          plotBreadth: parsed.data.plotBreadth ?? null,
+          floorsAllowed: parsed.data.floorsAllowed ?? null,
+          boundaryWall: parsed.data.boundaryWall ?? null,
+          openSides: parsed.data.openSides ?? null,
+          constructionDone: parsed.data.constructionDone ?? null,
+          commercialSubtype: parsed.data.commercialSubtype ?? null,
+          locatedInside: parsed.data.locatedInside ?? null,
+          washroomType: parsed.data.washroomType ?? null,
+          parkingType: parsed.data.parkingType ?? null,
+          entranceWidth: parsed.data.entranceWidth ?? null,
+          ceilingHeight: parsed.data.ceilingHeight ?? null,
           tagline: parsed.data.tagline ?? null,
           builderId: parsed.data.builderId ?? null,
           createdById: user.id,
@@ -236,8 +266,12 @@ export async function POST(req: Request) {
           slug: true,
           title: true,
         },
-      })
-    );
+      });
+      if (parsed.data.sellerPropertyAddress) {
+        await tx.$executeRaw`UPDATE "Property" SET "sellerPropertyAddress" = ${parsed.data.sellerPropertyAddress} WHERE "id" = ${propertyId}`;
+      }
+      return row;
+    });
   } catch (error) {
     await Promise.allSettled(uploaded.map((image) => deleteS3Object(image.key)));
     return jsonError(error instanceof Error ? error.message : "Property could not be created");

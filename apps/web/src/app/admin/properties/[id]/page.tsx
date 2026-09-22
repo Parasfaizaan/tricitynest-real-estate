@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { ensureDefaultAmenities } from "@/lib/admin-default-amenities";
 import { PropertyForm } from "@/components/admin/property-form";
 
 export default async function EditPropertyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [property, locations, propertyTypes, amenities, builders] = await Promise.all([
+  await ensureDefaultAmenities(prisma);
+  const [property, locations, propertyTypes, amenities, builders, projects] = await Promise.all([
     prisma.property.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -18,6 +20,12 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
     prisma.propertyType.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.amenity.findMany({ orderBy: { name: "asc" } }),
     prisma.builder.findMany(),
+    prisma.property.findMany({
+      where: { projectName: { not: null } },
+      select: { projectName: true },
+      distinct: ["projectName"],
+      orderBy: { projectName: "asc" },
+    }),
   ]);
   if (!property) notFound();
   return (
@@ -26,6 +34,7 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
       <PropertyForm
         tax={{ locations, propertyTypes, amenities, builders }}
         initial={{ ...property, deletionPending: property.deletionRequests.length > 0 }}
+        projectNames={projects.flatMap((project) => (project.projectName ? [project.projectName] : []))}
       />
     </div>
   );

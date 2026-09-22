@@ -146,6 +146,7 @@ model Property {
   listingType      String?
   sellerName       String?
   sellerPhone      String?
+  sellerPropertyAddress String?
   bhk              Int?
   bedrooms         Int?
   bathrooms        Int?

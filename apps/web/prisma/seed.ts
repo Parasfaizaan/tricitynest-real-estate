@@ -115,9 +115,32 @@ async function main() {
   const type = Object.fromEntries(types.map((t) => [t.slug, t]));
 
   const amenityRows = await Promise.all(
-    ["Parking", "Gym", "Swimming Pool", "Clubhouse", "Security", "Power Backup", "Lift", "Park", "Modular Kitchen", "Air Conditioning", "Servant Room", "Visitor Parking"].map((name) =>
+    [
+      "Parking",
+      "Gym",
+      "Swimming Pool",
+      "Clubhouse",
+      "Security",
+      "Power Backup",
+      "Lift",
+      "Park",
+      "Visitor Parking",
+      "Children's Play Area",
+      "Security / Fire Alarm",
+      "Security Guard",
+      "Intercom Facility",
+      "Maintenance Staff",
+      "Water Storage",
+      "CCTV Surveillance",
+    ].map((name) =>
       prisma.amenity.create({
-        data: { name, slug: name.toLowerCase().replace(/\s+/g, "-") },
+        data: {
+          name,
+          slug: name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, ""),
+        },
       })
     )
   );
