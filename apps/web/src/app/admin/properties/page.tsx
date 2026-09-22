@@ -33,7 +33,7 @@ export default async function AdminPropertiesPage({ searchParams }: { searchPara
       <div className="flex items-center justify-between">
         <h1 className="display text-3xl text-navy">Properties</h1>
         <Link href="/admin/properties/new" className="rounded-full bg-navy px-5 py-2.5 text-sm font-semibold !text-white">
-          New listing
+          Add
         </Link>
       </div>
       <div className="mt-6 overflow-x-auto card-surface">

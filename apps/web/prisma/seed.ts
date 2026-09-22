@@ -101,13 +101,14 @@ async function main() {
     [
       { name: "Apartment", slug: "apartment", category: Category.RESIDENTIAL, sortOrder: 1 },
       { name: "Builder Floor", slug: "builder-floor", category: Category.RESIDENTIAL, sortOrder: 2 },
-      { name: "Villa", slug: "villa", category: Category.RESIDENTIAL, sortOrder: 3 },
-      { name: "Plot", slug: "plot", category: Category.RESIDENTIAL, sortOrder: 4 },
-      { name: "SCO", slug: "sco", category: Category.COMMERCIAL, sortOrder: 5 },
-      { name: "Shop", slug: "shop", category: Category.COMMERCIAL, sortOrder: 6 },
-      { name: "Showroom", slug: "showroom", category: Category.COMMERCIAL, sortOrder: 7 },
-      { name: "Office", slug: "office", category: Category.COMMERCIAL, sortOrder: 8 },
-      { name: "Commercial Plot", slug: "commercial-plot", category: Category.COMMERCIAL, sortOrder: 9 },
+      { name: "Independent Floor", slug: "independent-floor", category: Category.RESIDENTIAL, sortOrder: 3 },
+      { name: "Villa", slug: "villa", category: Category.RESIDENTIAL, sortOrder: 4 },
+      { name: "Plot", slug: "plot", category: Category.RESIDENTIAL, sortOrder: 5 },
+      { name: "SCO", slug: "sco", category: Category.COMMERCIAL, sortOrder: 6 },
+      { name: "Shop", slug: "shop", category: Category.COMMERCIAL, sortOrder: 7 },
+      { name: "Showroom", slug: "showroom", category: Category.COMMERCIAL, sortOrder: 8 },
+      { name: "Office", slug: "office", category: Category.COMMERCIAL, sortOrder: 9 },
+      { name: "Commercial Plot", slug: "commercial-plot", category: Category.COMMERCIAL, sortOrder: 10 },
     ].map((t) => prisma.propertyType.create({ data: t }))
   );
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   Bath,
   Building2,
@@ -110,16 +110,9 @@ const MIN_IMAGES = 5;
 const MAX_IMAGES = 15;
 
 const steps = [
-  "Listing",
-  "Category",
-  "Location",
-  "Configuration",
-  "Furnishing",
-  "Floors",
-  "Status",
-  "Photos",
-  "Price",
-  "Description",
+  { label: "Step 1", sections: ["1. Listing", "2. Category", "3. Location"] },
+  { label: "Step 2", sections: ["4. Configuration", "5. Furnishing", "6. Floors"] },
+  { label: "Step 3", sections: ["7. Status", "8. Photos", "9. Price", "10. Description"] },
 ];
 
 const otherRooms = ["Pooja Room", "Study Room", "Servant Room", "Store Room"];
@@ -187,6 +180,7 @@ function initialSubLocation(city?: string, value?: string | null) {
 export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) {
   const router = useRouter();
   const editing = Boolean(initial?.id);
+  const formRef = useRef<HTMLFormElement>(null);
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -303,40 +297,124 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
     setOtherLocation("");
   }
 
+  function positiveNumber(fd: FormData, name: string) {
+    const value = numberOrNull(fd.get(name));
+    return value != null && value > 0;
+  }
+
+  function optionalNonNegativeNumber(fd: FormData, name: string) {
+    const value = numberOrNull(fd.get(name));
+    return value == null || value >= 0;
+  }
+
+  function validateStep(targetStep: number, fd: FormData) {
+    const cleanSubLocation = subLocation === "Other" ? otherLocation.trim() : subLocation;
+
+    if (targetStep === 0) {
+      if (listingType === "RESALE") {
+        if (!textOrNull(fd.get("sellerName"))) return "Please enter the seller name.";
+        if (!textOrNull(fd.get("sellerPhone"))) return "Please enter the seller contact number.";
+      }
+      if (!fd.get("transactionType")) return "Please select a transaction type.";
+      if (!activeTypeId) return "Please select a property type.";
+      if (!selectedCity) return "Please select a city.";
+      if (!cleanSubLocation) return "Please select a sector or sub-location.";
+      if (!savedCityLocationId) return `Location taxonomy is missing for ${selectedCity}. Add ${selectedCity} in Admin Taxonomies first.`;
+    }
+
+    if (targetStep === 1) {
+      if (!positiveNumber(fd, "superArea")) return isPlot ? "Please enter the plot area." : "Please enter the super area.";
+      if (!optionalNonNegativeNumber(fd, "carpetArea")) return "Carpet area cannot be negative.";
+      if (!isPlot && !optionalNonNegativeNumber(fd, "builtUpArea")) return "Built-up area cannot be negative.";
+      if (!isCommercial && !isPlot && !positiveNumber(fd, "bhk")) return "Please select BHK.";
+      if (isCommercial) {
+        if (!optionalNonNegativeNumber(fd, "entranceWidth")) return "Entrance width cannot be negative.";
+        if (!optionalNonNegativeNumber(fd, "ceilingHeight")) return "Ceiling height cannot be negative.";
+      }
+      if (isPlot || isHouse) {
+        if (!optionalNonNegativeNumber(fd, "plotLength")) return "Plot length cannot be negative.";
+        if (!optionalNonNegativeNumber(fd, "plotBreadth")) return "Plot breadth cannot be negative.";
+      }
+      if (isPlot && !optionalNonNegativeNumber(fd, "floorsAllowed")) return "Floors allowed cannot be negative.";
+    }
+
+    if (targetStep === 2) {
+      if (images.length < MIN_IMAGES) return `Upload at least ${MIN_IMAGES} photos before saving.`;
+      if (images.length > MAX_IMAGES) return `A property can have at most ${MAX_IMAGES} photos.`;
+      if (!positiveNumber(fd, "price")) return "Please enter the property price.";
+      if (!textOrNull(fd.get("description"))) return "Please enter the property description.";
+    }
+
+    return "";
+  }
+
+  function goToStep(nextStep: number) {
+    if (busy || nextStep === step) return;
+    if (nextStep < step) {
+      setError("");
+      setStep(nextStep);
+      return;
+    }
+
+    const form = formRef.current;
+    if (!form) return;
+    const fd = new FormData(form);
+    for (let index = step; index < nextStep; index += 1) {
+      const validationError = validateStep(index, fd);
+      if (validationError) {
+        setStep(index);
+        setError(validationError);
+        return;
+      }
+    }
+    setError("");
+    setSuccess("");
+    setStep(nextStep);
+  }
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setSuccess("");
 
+    const fd = new FormData(e.currentTarget);
+    for (let index = 0; index < steps.length; index += 1) {
+      const validationError = validateStep(index, fd);
+      if (validationError) {
+        setStep(index);
+        setError(validationError);
+        return;
+      }
+    }
+
     if (images.length < MIN_IMAGES) {
-      setStep(7);
+      setStep(2);
       setError(`Upload at least ${MIN_IMAGES} photos before saving.`);
       return;
     }
     if (images.length > MAX_IMAGES) {
-      setStep(7);
+      setStep(2);
       setError(`A property can have at most ${MAX_IMAGES} photos.`);
       return;
     }
     const cleanSubLocation = subLocation === "Other" ? otherLocation.trim() : subLocation;
     if (!selectedCity) {
-      setStep(2);
+      setStep(0);
       setError("Please select a city.");
       return;
     }
     if (!cleanSubLocation) {
-      setStep(2);
+      setStep(0);
       setError("Please select a sector or sub-location.");
       return;
     }
     if (!savedCityLocationId) {
-      setStep(2);
+      setStep(0);
       setError(`Location taxonomy is missing for ${selectedCity}. Add ${selectedCity} in Admin Taxonomies first.`);
       return;
     }
 
     setBusy(true);
-    const fd = new FormData(e.currentTarget);
     const title = String(fd.get("title") || generatedTitle || initial?.title || "").trim();
     const description = String(fd.get("description") || "").trim();
     const selectedSuperArea = numberOrNull(fd.get("superArea")) ?? numberOrNull(fd.get("area")) ?? 0;
@@ -456,24 +534,27 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
 
   return (
     <>
-      <form onSubmit={onSubmit} noValidate className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <form ref={formRef} onSubmit={onSubmit} noValidate className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="h-fit max-h-[calc(100dvh-11rem)] overflow-y-auto rounded-lg border border-line bg-white p-4">
           <p className="text-sm font-semibold text-navy">Create property</p>
           <div className="mt-4 h-2 rounded-full bg-page">
             <div className="h-2 rounded-full bg-navy" style={{ width: `${percent}%` }} />
           </div>
           <ol className="mt-5 grid gap-1.5 text-sm">
-            {steps.map((label, index) => (
-              <li key={label}>
+            {steps.map((item, index) => (
+              <li key={item.label}>
                 <button
                   type="button"
-                  onClick={() => setStep(index)}
+                  onClick={() => goToStep(index)}
                   className={`flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-left transition ${
                     index === step ? "bg-navy text-white" : index < step ? "bg-page text-navy" : "text-ink-soft"
                   }`}
                 >
                   <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-current text-xs">{index + 1}</span>
-                  <span className="truncate">{label}</span>
+                  <span className="min-w-0">
+                    <span className="block font-medium">{item.label}</span>
+                    {/* <span className="block truncate text-xs opacity-75">{item.sections.join(", ")}</span> */}
+                  </span>
                 </button>
               </li>
             ))}
@@ -506,7 +587,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             </Section>
           </div>
 
-          <div className={step === 1 ? "grid gap-5" : "hidden"}>
+          <div className={step === 0 ? "grid gap-5" : "hidden"}>
             <Section title="Property category">
               <RadioGroup
                 name="categoryControl"
@@ -532,7 +613,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             </Section>
           </div>
 
-          <div className={step === 2 ? "grid gap-5" : "hidden"}>
+          <div className={step === 0 ? "grid gap-5" : "hidden"}>
             <Section title="Property location">
               <div className="grid gap-3 md:grid-cols-2">
                 <Field label="City">
@@ -571,7 +652,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             </Section>
           </div>
 
-          <div className={step === 3 ? "grid gap-5" : "hidden"}>
+          <div className={step === 1 ? "grid gap-5" : "hidden"}>
             <Section title={isCommercial ? "Commercial configuration" : "Property configuration"}>
               {!isCommercial && !isPlot && (
                 <div className="grid gap-3 md:grid-cols-4">
@@ -655,7 +736,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             </Section>
           </div>
 
-          <div className={step === 4 ? "grid gap-5" : "hidden"}>
+          <div className={step === 1 ? "grid gap-5" : "hidden"}>
             <Section title="Furnishing and amenities">
               <RadioGroup
                 name="furnishingControl"
@@ -689,7 +770,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             </Section>
           </div>
 
-          <div className={step === 5 ? "grid gap-5" : "hidden"}>
+          <div className={step === 1 ? "grid gap-5" : "hidden"}>
             <Section title="Floor details">
               <div className="grid gap-3 md:grid-cols-3">
                 <select name="totalFloors" defaultValue={initial?.totalFloors ?? ""}>
@@ -769,7 +850,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             </Section>
           </div>
 
-          <div className={step === 6 ? "grid gap-5" : "hidden"}>
+          <div className={step === 2 ? "grid gap-5" : "hidden"}>
             <Section title="Property status">
               <RadioGroup
                 name="possessionControl"
@@ -806,7 +887,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             </Section>
           </div>
 
-          <div className={step === 7 ? "grid gap-5" : "hidden"}>
+          <div className={step === 2 ? "grid gap-5" : "hidden"}>
             <Section title="Property photos">
               <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => addImages(e.target.files)} />
               <p className="text-sm text-ink-soft">
@@ -843,7 +924,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             </Section>
           </div>
 
-          <div className={step === 8 ? "grid gap-5" : "hidden"}>
+          <div className={step === 2 ? "grid gap-5" : "hidden"}>
             <Section title="Price">
               <div className="grid gap-3 md:grid-cols-3">
                 <input
@@ -873,7 +954,7 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
             </Section>
           </div>
 
-          <div className={step === 9 ? "grid gap-5" : "hidden"}>
+          <div className={step === 2 ? "grid gap-5" : "hidden"}>
             <Section title="Property name and description">
               <input name="title" readOnly value={generatedTitle || initial?.title || ""} />
               <textarea name="description" required rows={6} defaultValue={initial?.description} placeholder="Property description" />
@@ -881,11 +962,11 @@ export function PropertyForm({ tax, initial }: { tax: Tax; initial?: Initial }) 
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="outline" disabled={step === 0 || busy} onClick={() => setStep((current) => Math.max(0, current - 1))}>
+            <Button type="button" variant="outline" disabled={step === 0 || busy} onClick={() => goToStep(Math.max(0, step - 1))}>
               Back
             </Button>
             {step < steps.length - 1 ? (
-              <Button type="button" disabled={busy} onClick={() => setStep((current) => Math.min(steps.length - 1, current + 1))}>
+              <Button type="button" disabled={busy} onClick={() => goToStep(Math.min(steps.length - 1, step + 1))}>
                 Continue
               </Button>
             ) : (

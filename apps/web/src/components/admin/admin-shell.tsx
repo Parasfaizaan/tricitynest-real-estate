@@ -72,9 +72,6 @@ export function AdminShell({
               Super admin →
             </Link>
           )}
-          <button onClick={logout} className="mt-3 text-white/70 hover:text-white">
-            Sign out
-          </button>
         </div>
       </aside>
       <div className="md:pl-60">
