@@ -5,13 +5,13 @@ import { jsonError, slugify } from "@/lib/utils";
 import { writeAudit } from "@/lib/audit";
 import { Category, PropertyStatus, TransactionType, Furnishing, Possession } from "@prisma/client";
 import { propertyInclude } from "@/lib/property-query";
-import { MAX_PROPERTY_IMAGES, deleteS3Object, uploadPropertyImageToS3, type UploadedPropertyImage } from "@/lib/s3";
+import { MAX_PROPERTY_IMAGES, MIN_PROPERTY_IMAGES, deleteS3Object, uploadPropertyImageToS3, type UploadedPropertyImage } from "@/lib/s3";
 import { randomUUID } from "crypto";
 
 const schema = z.object({
   title: z.string().min(4),
-  shortDescription: z.string().min(8),
-  description: z.string().min(12),
+  shortDescription: z.string().min(8).optional().nullable(),
+  description: z.string().min(3),
   category: z.enum(["RESIDENTIAL", "COMMERCIAL"]),
   propertyTypeId: z.string(),
   transactionType: z.enum(["BUY", "RENT", "INVEST"]),
@@ -20,26 +20,52 @@ const schema = z.object({
   price: z.number().positive(),
   priceMax: z.number().optional().nullable(),
   negotiable: z.boolean().optional(),
+  listingType: z.string().optional().nullable(),
+  sellerName: z.string().optional().nullable(),
+  sellerPhone: z.string().optional().nullable(),
+  bhk: z.number().optional().nullable(),
   bedrooms: z.number().optional().nullable(),
   bathrooms: z.number().optional().nullable(),
   balconies: z.number().optional().nullable(),
   area: z.number().positive(),
   areaUnit: z.string().optional(),
+  superArea: z.number().optional().nullable(),
+  builtUpArea: z.number().optional().nullable(),
   carpetArea: z.number().optional().nullable(),
-  locality: z.string().min(2),
-  locationId: z.string(),
-  city: z.string().min(2),
+  otherRooms: z.string().optional().nullable(),
+  furnishingItems: z.string().optional().nullable(),
+  locality: z.string().min(2, "Please select a sector or sub-location"),
+  sector: z.string().optional().nullable(),
+  projectName: z.string().optional().nullable(),
+  locationId: z.string().min(1, "Please select a sector or sub-location"),
+  city: z.string().min(2, "Please select a city"),
   postalCode: z.string().optional().nullable(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
   furnishing: z.enum(["UNFURNISHED", "SEMI_FURNISHED", "FURNISHED"]).optional(),
   possession: z.enum(["READY", "UNDER_CONSTRUCTION", "NEW_LAUNCH"]).optional(),
   possessionDate: z.string().optional().nullable(),
+  propertyAge: z.string().optional().nullable(),
   reraNumber: z.string().optional().nullable(),
   floor: z.number().optional().nullable(),
+  floorLabel: z.string().optional().nullable(),
   totalFloors: z.number().optional().nullable(),
   facing: z.string().optional().nullable(),
   parking: z.boolean().optional(),
+  coveredParking: z.number().optional().nullable(),
+  openParking: z.number().optional().nullable(),
+  plotLength: z.number().optional().nullable(),
+  plotBreadth: z.number().optional().nullable(),
+  floorsAllowed: z.number().optional().nullable(),
+  boundaryWall: z.boolean().optional().nullable(),
+  openSides: z.number().optional().nullable(),
+  constructionDone: z.boolean().optional().nullable(),
+  commercialSubtype: z.string().optional().nullable(),
+  locatedInside: z.string().optional().nullable(),
+  washroomType: z.string().optional().nullable(),
+  parkingType: z.string().optional().nullable(),
+  entranceWidth: z.number().optional().nullable(),
+  ceilingHeight: z.number().optional().nullable(),
   tagline: z.string().optional().nullable(),
   images: z.array(z.string().url()).optional(),
   amenityIds: z.array(z.string()).optional(),
@@ -114,7 +140,7 @@ export async function POST(req: Request) {
   if (relationError) return jsonError(relationError);
 
   const legacyImages = parsed.data.images ?? [];
-  if (legacyImages.length + body.files.length < 1) return jsonError("Upload at least one property image");
+  if (legacyImages.length + body.files.length < MIN_PROPERTY_IMAGES) return jsonError(`Upload at least ${MIN_PROPERTY_IMAGES} property images`);
   if (legacyImages.length + body.files.length > MAX_PROPERTY_IMAGES) {
     return jsonError(`A property can have at most ${MAX_PROPERTY_IMAGES} images`);
   }
@@ -145,7 +171,7 @@ export async function POST(req: Request) {
           id: propertyId,
           slug,
           title: parsed.data.title,
-          shortDescription: parsed.data.shortDescription,
+          shortDescription: parsed.data.shortDescription || parsed.data.description.slice(0, 160),
           description: parsed.data.description,
           category: parsed.data.category as Category,
           propertyTypeId: parsed.data.propertyTypeId,
@@ -159,9 +185,9 @@ export async function POST(req: Request) {
           bathrooms: parsed.data.bathrooms ?? null,
           balconies: parsed.data.balconies ?? null,
           area: parsed.data.area,
-          areaUnit: parsed.data.areaUnit || "sqft",
+          areaUnit: parsed.data.areaUnit || "sq.ft.",
           carpetArea: parsed.data.carpetArea ?? null,
-          address: `${parsed.data.locality}, ${parsed.data.city}`,
+          address: [parsed.data.projectName, parsed.data.sector || parsed.data.locality, parsed.data.city].filter(Boolean).join(", "),
           locality: parsed.data.locality,
           locationId: parsed.data.locationId,
           city: parsed.data.city,
@@ -204,6 +230,11 @@ export async function POST(req: Request) {
           features: parsed.data.features?.length
             ? { create: parsed.data.features.filter(Boolean).map((label) => ({ label })) }
             : undefined,
+        },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
         },
       })
     );

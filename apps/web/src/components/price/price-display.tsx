@@ -34,6 +34,7 @@ export function PriceDisplay({
   property,
   className,
   buttonClassName,
+  buttonLabel = "View Price",
   showButton = true,
   dark = false,
 }: {
@@ -43,6 +44,7 @@ export function PriceDisplay({
   property?: PriceContext;
   className?: string;
   buttonClassName?: string;
+  buttonLabel?: string;
   showButton?: boolean;
   dark?: boolean;
 }) {
@@ -58,6 +60,7 @@ export function PriceDisplay({
       {showButton && (
         <PriceUnlockButton
           className={buttonClassName}
+          label={buttonLabel}
           dark={dark}
           onClick={(event) => {
             event.preventDefault();
@@ -75,10 +78,12 @@ export function PriceDisplay({
 export function PriceUnlockButton({
   onClick,
   className,
+  label = "View Price",
   dark = false,
 }: {
   onClick: React.MouseEventHandler<HTMLButtonElement>;
   className?: string;
+  label?: string;
   dark?: boolean;
 }) {
   return (
@@ -92,7 +97,7 @@ export function PriceUnlockButton({
       )}
     >
       <Lock size={16} />
-      View Price
+      {label}
     </button>
   );
 }

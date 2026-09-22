@@ -132,7 +132,7 @@ model Property {
   id               String          @id @default(cuid())
   slug             String          @unique
   title            String
-  shortDescription String
+  shortDescription String          @default("")
   description      String
   category         Category
   propertyTypeId   String
@@ -143,14 +143,24 @@ model Property {
   price            Int
   priceMax         Int?
   negotiable       Boolean         @default(true)
+  listingType      String?
+  sellerName       String?
+  sellerPhone      String?
+  bhk              Int?
   bedrooms         Int?
   bathrooms        Int?
   balconies        Int?
   area             Int
   areaUnit         String          @default("sqft")
+  superArea        Int?
+  builtUpArea      Int?
   carpetArea       Int?
+  otherRooms       String?
+  furnishingItems  String?
   address          String
   locality         String
+  sector           String?
+  projectName      String?
   locationId       String
   location         Location        @relation(fields: [locationId], references: [id])
   city             String
@@ -162,10 +172,26 @@ model Property {
   facing           String?
   possession       Possession      @default(READY)
   possessionDate   String?
+  propertyAge      String?
   reraNumber       String?
   floor            Int?
+  floorLabel       String?
   totalFloors      Int?
   parking          Boolean         @default(false)
+  coveredParking   Int?
+  openParking      Int?
+  plotLength       Int?
+  plotBreadth      Int?
+  floorsAllowed    Int?
+  boundaryWall     Boolean?
+  openSides        Int?
+  constructionDone Boolean?
+  commercialSubtype String?
+  locatedInside    String?
+  washroomType     String?
+  parkingType      String?
+  entranceWidth    Int?
+  ceilingHeight    Int?
   builderId        String?
   builder          Builder?        @relation(fields: [builderId], references: [id])
   tagline          String?

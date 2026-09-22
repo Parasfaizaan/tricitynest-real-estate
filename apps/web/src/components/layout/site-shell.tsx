@@ -6,7 +6,7 @@ import { Footer } from "./footer";
 import { PropertyMatcher } from "@/components/matcher/property-matcher";
 
 type Tax = {
-  locations: { name: string; slug: string }[];
+  locations: { name: string; slug: string; imageUrl?: string | null }[];
   propertyTypes: { name: string; slug: string; category: string }[];
 };
 

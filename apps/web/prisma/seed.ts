@@ -27,6 +27,7 @@ const IMAGES = {
   newchd: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
   derabassi: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80",
   banur: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80",
+  panchkula: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=1200&q=80",
 };
 
 async function main() {
@@ -90,6 +91,7 @@ async function main() {
       { name: "New Chandigarh", slug: "new-chandigarh", city: "New Chandigarh", imageUrl: IMAGES.newchd, sortOrder: 5 },
       { name: "Derabassi", slug: "derabassi", city: "Derabassi", imageUrl: IMAGES.derabassi, sortOrder: 6 },
       { name: "Banur", slug: "banur", city: "Banur", imageUrl: IMAGES.banur, sortOrder: 7 },
+      { name: "Panchkula", slug: "panchkula", city: "Panchkula", state: "Haryana", imageUrl: IMAGES.panchkula, sortOrder: 8 },
     ].map((l) => prisma.location.create({ data: l }))
   );
 

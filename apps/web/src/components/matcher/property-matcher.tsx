@@ -13,9 +13,7 @@ import {
   Home,
   IndianRupee,
   Mail,
-  MapPin,
   Phone,
-  Ruler,
   Search,
   UserRound,
   X,
@@ -24,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type Tax = {
-  locations: { name: string; slug: string }[];
+  locations: { name: string; slug: string; imageUrl?: string | null }[];
   propertyTypes: { name: string; slug: string; category: string }[];
 };
 
@@ -63,7 +61,7 @@ const empty: State = {
   maxBudget: "100000000",
   bedrooms: [],
   sizeUnit: "any",
-  timeline: "Immediately",
+  timeline: "Move-in Ready",
   name: "",
   phone: "",
   email: "",
@@ -72,7 +70,7 @@ const empty: State = {
 };
 
 const steps = ["Property Details", "Location & Preferences", "Your Details"];
-const timelines = ["Immediately", "Within 1 month", "1-3 months", "Later"];
+const timelines = ["Move-in Ready", "Prelaunch", "Under Construction", "Later"];
 const budgetConfig = { min: 1_000_000, max: 100_000_000, step: 500_000 };
 
 const sidePanels = [
@@ -159,7 +157,7 @@ export function PropertyMatcher({
   });
 
   const availableTypes = useMemo(
-    () => taxonomies.propertyTypes.filter((type) => type.category === (state.propertyCategory || "RESIDENTIAL")).slice(0, 4),
+    () => taxonomies.propertyTypes.filter((type) => type.category === (state.propertyCategory || "RESIDENTIAL")),
     [state.propertyCategory, taxonomies.propertyTypes]
   );
 
@@ -192,7 +190,7 @@ export function PropertyMatcher({
   }
 
   function chooseType(slug: string) {
-    setState((current) => ({ ...current, propertyTypes: [slug] }));
+    setState((current) => ({ ...current, propertyTypes: [slug], bedrooms: slug.includes("plot") ? [] : current.bedrooms }));
   }
 
   function chooseTransaction(transactionType: State["transactionType"]) {
@@ -208,7 +206,7 @@ export function PropertyMatcher({
     if (state.step === 1) {
       if (!state.propertyCategory) return "Select a property category.";
       if (state.propertyTypes.length === 0) return "Select a property type.";
-      if (!state.transactionType) return "Choose buy, rent or invest.";
+      if (!state.transactionType) return "Choose end user or investor.";
     }
     if (state.step === 2) {
       if (state.locationSlugs.length === 0) return "Select at least one location.";
@@ -438,9 +436,8 @@ function StepOne({
       <Segmented
         value={state.transactionType}
         options={[
-          ["BUY", "Buy"],
-          ["RENT", "Rent"],
-          ["INVEST", "Invest"],
+          ["BUY", "End User"],
+          ["INVEST", "Investor"],
         ]}
         onChange={(value) => onTransaction(value as State["transactionType"])}
       />
@@ -454,10 +451,11 @@ function StepTwo({
   onChange,
 }: {
   state: State;
-  locations: { name: string; slug: string }[];
+  locations: { name: string; slug: string; imageUrl?: string | null }[];
   onChange: (patch: Partial<State>) => void;
 }) {
   const budget = getBudgetValues(state);
+  const showBedrooms = state.propertyCategory === "RESIDENTIAL" && !state.propertyTypes.some((slug) => slug.includes("plot"));
   return (
     <>
       <Heading title="Where would you like to look?" description="Search for a city, area or locality" />
@@ -483,29 +481,18 @@ function StepTwo({
           <SectionLabel icon={IndianRupee}>Budget Range</SectionLabel>
           <DualRange value={budget} onChange={([minBudget, maxBudget]) => onChange({ minBudget: String(minBudget), maxBudget: String(maxBudget) })} />
         </div>
-        <div>
-          <SectionLabel icon={Ruler}>Property Size <span className="font-normal text-ink-soft">(Optional)</span></SectionLabel>
-          <div className="mt-3 grid grid-cols-4 gap-2">
-            {[
-              ["any", "Any"],
-              ["sqft", "Sq. Ft."],
-              ["sqyd", "Sq. Yd."],
-              ["sqm", "Sq. M."],
-            ].map(([value, label]) => (
-              <SmallPill key={value} active={state.sizeUnit === value} onClick={() => onChange({ sizeUnit: value as State["sizeUnit"] })}>{label}</SmallPill>
-            ))}
+        {showBedrooms && (
+          <div>
+            <SectionLabel icon={Home}>BHK <span className="font-normal text-ink-soft">(Optional)</span></SectionLabel>
+            <div className="mt-3 grid grid-cols-6 gap-2">
+              {[0, 1, 2, 3, 4, 5].map((n) => (
+                <SmallPill key={n} active={n === 0 ? state.bedrooms.length === 0 : state.bedrooms.includes(n)} onClick={() => onChange({ bedrooms: n === 0 ? [] : toggle(state.bedrooms, n) })}>
+                  {n === 0 ? "Any" : n === 5 ? "5+" : n}
+                </SmallPill>
+              ))}
+            </div>
           </div>
-        </div>
-        <div>
-          <SectionLabel icon={Home}>BHK <span className="font-normal text-ink-soft">(Optional)</span></SectionLabel>
-          <div className="mt-3 grid grid-cols-6 gap-2">
-            {[0, 1, 2, 3, 4, 5].map((n) => (
-              <SmallPill key={n} active={n === 0 ? state.bedrooms.length === 0 : state.bedrooms.includes(n)} onClick={() => onChange({ bedrooms: n === 0 ? [] : toggle(state.bedrooms, n) })}>
-                {n === 0 ? "Any" : n === 5 ? "5+" : n}
-              </SmallPill>
-            ))}
-          </div>
-        </div>
+        )}
         <div>
           <SectionLabel icon={CalendarDays}>Preferred Timeline <span className="font-normal text-ink-soft">(Optional)</span></SectionLabel>
           <div className="mt-3 grid grid-cols-4 gap-2">
@@ -580,11 +567,11 @@ function ImageOption({ title, image, active, onClick }: { title: string; image: 
   );
 }
 
-function LocationOption({ location, active, onClick }: { location: { name: string; slug: string }; active: boolean; onClick: () => void }) {
+function LocationOption({ location, active, onClick }: { location: { name: string; slug: string; imageUrl?: string | null }; active: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="text-left">
       <span className={cn("relative block aspect-square overflow-hidden rounded-lg border bg-page transition", active ? "border-navy shadow-[0_0_0_2px_rgba(16,37,31,0.14)]" : "border-line")}>
-        <Image src={locationImages[location.slug] ?? typeImages.apartment} alt="" fill className="object-cover" />
+        <Image src={location.imageUrl || locationImages[location.slug] || typeImages.apartment} alt="" fill className="object-cover" />
         {active && <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-navy text-white"><Check size={14} /></span>}
       </span>
       <span className="mt-2 block truncate text-xs font-bold text-navy">{location.name}</span>
@@ -679,9 +666,11 @@ function normalizeSavedState(saved: State): State {
   const propertyCategory =
     saved.propertyCategory ||
     (saved.propertyTypes.some((slug) => ["sco", "shop", "showroom", "office", "commercial-plot"].includes(slug)) ? "COMMERCIAL" : saved.propertyTypes.length ? "RESIDENTIAL" : "");
+  const timeline = timelines.includes(saved.timeline) ? saved.timeline : empty.timeline;
   return {
     ...saved,
     propertyCategory,
+    timeline,
     step: Math.min(TOTAL_STEPS, Math.max(1, Number(saved.step) || 1)),
   };
 }

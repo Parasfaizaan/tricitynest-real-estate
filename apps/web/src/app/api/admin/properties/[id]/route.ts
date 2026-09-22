@@ -5,12 +5,12 @@ import { jsonError } from "@/lib/utils";
 import { writeAudit } from "@/lib/audit";
 import { Category, Furnishing, Possession, PropertyStatus, TransactionType } from "@prisma/client";
 import { propertyInclude } from "@/lib/property-query";
-import { MAX_PROPERTY_IMAGES, deleteS3Object, uploadPropertyImageToS3, type UploadedPropertyImage } from "@/lib/s3";
+import { MAX_PROPERTY_IMAGES, MIN_PROPERTY_IMAGES, deleteS3Object, uploadPropertyImageToS3, type UploadedPropertyImage } from "@/lib/s3";
 
 const schema = z.object({
   title: z.string().min(4).optional(),
-  shortDescription: z.string().min(8).optional(),
-  description: z.string().min(12).optional(),
+  shortDescription: z.string().min(8).optional().nullable(),
+  description: z.string().min(3).optional(),
   category: z.enum(["RESIDENTIAL", "COMMERCIAL"]).optional(),
   propertyTypeId: z.string().optional(),
   transactionType: z.enum(["BUY", "RENT", "INVEST"]).optional(),
@@ -19,26 +19,52 @@ const schema = z.object({
   price: z.number().positive().optional(),
   priceMax: z.number().optional().nullable(),
   negotiable: z.boolean().optional(),
+  listingType: z.string().optional().nullable(),
+  sellerName: z.string().optional().nullable(),
+  sellerPhone: z.string().optional().nullable(),
+  bhk: z.number().optional().nullable(),
   bedrooms: z.number().optional().nullable(),
   bathrooms: z.number().optional().nullable(),
   balconies: z.number().optional().nullable(),
   area: z.number().positive().optional(),
   areaUnit: z.string().optional(),
+  superArea: z.number().optional().nullable(),
+  builtUpArea: z.number().optional().nullable(),
   carpetArea: z.number().optional().nullable(),
-  locality: z.string().optional(),
-  locationId: z.string().optional(),
-  city: z.string().optional(),
+  otherRooms: z.string().optional().nullable(),
+  furnishingItems: z.string().optional().nullable(),
+  locality: z.string().min(2, "Please select a sector or sub-location").optional(),
+  sector: z.string().optional().nullable(),
+  projectName: z.string().optional().nullable(),
+  locationId: z.string().min(1, "Please select a sector or sub-location").optional(),
+  city: z.string().min(2, "Please select a city").optional(),
   postalCode: z.string().optional().nullable(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
   furnishing: z.enum(["UNFURNISHED", "SEMI_FURNISHED", "FURNISHED"]).optional(),
   possession: z.enum(["READY", "UNDER_CONSTRUCTION", "NEW_LAUNCH"]).optional(),
   possessionDate: z.string().optional().nullable(),
+  propertyAge: z.string().optional().nullable(),
   reraNumber: z.string().optional().nullable(),
   floor: z.number().optional().nullable(),
+  floorLabel: z.string().optional().nullable(),
   totalFloors: z.number().optional().nullable(),
   facing: z.string().optional().nullable(),
   parking: z.boolean().optional(),
+  coveredParking: z.number().optional().nullable(),
+  openParking: z.number().optional().nullable(),
+  plotLength: z.number().optional().nullable(),
+  plotBreadth: z.number().optional().nullable(),
+  floorsAllowed: z.number().optional().nullable(),
+  boundaryWall: z.boolean().optional().nullable(),
+  openSides: z.number().optional().nullable(),
+  constructionDone: z.boolean().optional().nullable(),
+  commercialSubtype: z.string().optional().nullable(),
+  locatedInside: z.string().optional().nullable(),
+  washroomType: z.string().optional().nullable(),
+  parkingType: z.string().optional().nullable(),
+  entranceWidth: z.number().optional().nullable(),
+  ceilingHeight: z.number().optional().nullable(),
   tagline: z.string().optional().nullable(),
   images: z.array(z.string().url()).optional(),
   existingImages: z.array(z.object({ id: z.string(), sortOrder: z.number(), isCover: z.boolean() })).optional(),
@@ -121,7 +147,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const finalImageCount = usingImageManager ? keepImageIds.size + body.files.length : data.images?.length;
 
   if (finalImageCount != null) {
-    if (finalImageCount < 1) return jsonError("A property must have at least one image");
+    if (finalImageCount < MIN_PROPERTY_IMAGES) return jsonError(`A property must have at least ${MIN_PROPERTY_IMAGES} images`);
     if (finalImageCount > MAX_PROPERTY_IMAGES) return jsonError(`A property can have at most ${MAX_PROPERTY_IMAGES} images`);
   }
 
@@ -193,7 +219,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       where: { id },
       data: {
         title: data.title,
-        shortDescription: data.shortDescription,
+        shortDescription: data.shortDescription ?? (data.description ? data.description.slice(0, 160) : undefined),
         description: data.description,
         category: data.category as Category | undefined,
         propertyTypeId: data.propertyTypeId,
@@ -215,7 +241,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         postalCode: data.postalCode,
         latitude: data.latitude,
         longitude: data.longitude,
-        address: data.locality && data.city ? `${data.locality}, ${data.city}` : undefined,
+        address:
+          data.locality && data.city
+            ? [data.projectName, data.sector || data.locality, data.city].filter(Boolean).join(", ")
+            : undefined,
         furnishing: data.furnishing as Furnishing | undefined,
         possession: data.possession as Possession | undefined,
         possessionDate: data.possessionDate,
@@ -229,6 +258,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         updatedById: user.id,
         publishedAt:
           data.status === "PUBLISHED" && existing.status !== "PUBLISHED" ? new Date() : existing.publishedAt,
+      },
+      select: {
+        id: true,
+        title: true,
       },
     });
   });

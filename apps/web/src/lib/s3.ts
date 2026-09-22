@@ -1,7 +1,8 @@
 import { createHash, createHmac, randomUUID } from "crypto";
 
 const MAX_IMAGE_SIZE = 5_000_000;
-export const MAX_PROPERTY_IMAGES = 12;
+export const MIN_PROPERTY_IMAGES = 5;
+export const MAX_PROPERTY_IMAGES = 15;
 
 const allowedTypes = {
   "image/jpeg": { ext: "jpg", signatures: [[0xff, 0xd8, 0xff]] },
