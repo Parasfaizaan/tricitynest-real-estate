@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultAmenities } from "@/lib/admin-default-amenities";
+import { ensureDefaultPropertyTypes } from "@/lib/admin-default-property-types";
 import { PropertyForm } from "@/components/admin/property-form";
 
 export default async function EditPropertyPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await ensureDefaultPropertyTypes(prisma);
   await ensureDefaultAmenities(prisma);
   const [property, locations, propertyTypes, amenities, builders, projects] = await Promise.all([
     prisma.property.findFirst({

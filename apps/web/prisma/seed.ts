@@ -105,10 +105,12 @@ async function main() {
       { name: "Villa", slug: "villa", category: Category.RESIDENTIAL, sortOrder: 4 },
       { name: "Plot", slug: "plot", category: Category.RESIDENTIAL, sortOrder: 5 },
       { name: "SCO", slug: "sco", category: Category.COMMERCIAL, sortOrder: 6 },
-      { name: "Shop", slug: "shop", category: Category.COMMERCIAL, sortOrder: 7 },
-      { name: "Showroom", slug: "showroom", category: Category.COMMERCIAL, sortOrder: 8 },
-      { name: "Office", slug: "office", category: Category.COMMERCIAL, sortOrder: 9 },
-      { name: "Commercial Plot", slug: "commercial-plot", category: Category.COMMERCIAL, sortOrder: 10 },
+      { name: "SCF", slug: "scf", category: Category.COMMERCIAL, sortOrder: 7 },
+      { name: "Shop", slug: "shop", category: Category.COMMERCIAL, sortOrder: 8 },
+      { name: "Showroom", slug: "showroom", category: Category.COMMERCIAL, sortOrder: 9 },
+      { name: "Office", slug: "office", category: Category.COMMERCIAL, sortOrder: 10 },
+      { name: "Commercial Plot", slug: "commercial-plot", category: Category.COMMERCIAL, sortOrder: 11 },
+      { name: "Industrial Plot", slug: "industrial-plot", category: Category.COMMERCIAL, sortOrder: 12 },
     ].map((t) => prisma.propertyType.create({ data: t }))
   );
 

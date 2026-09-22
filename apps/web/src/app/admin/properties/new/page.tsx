@@ -1,18 +1,10 @@
-import { Category } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultAmenities } from "@/lib/admin-default-amenities";
+import { ensureDefaultPropertyTypes } from "@/lib/admin-default-property-types";
 import { PropertyForm } from "@/components/admin/property-form";
 
 export default async function NewPropertyPage() {
-  await prisma.$transaction([
-    prisma.propertyType.upsert({
-      where: { slug: "independent-floor" },
-      update: { name: "Independent Floor", category: Category.RESIDENTIAL, active: true, sortOrder: 3 },
-      create: { name: "Independent Floor", slug: "independent-floor", category: Category.RESIDENTIAL, sortOrder: 3 },
-    }),
-    prisma.propertyType.updateMany({ where: { slug: "villa" }, data: { sortOrder: 4 } }),
-    prisma.propertyType.updateMany({ where: { slug: "plot" }, data: { sortOrder: 5 } }),
-  ]);
+  await ensureDefaultPropertyTypes(prisma);
   await ensureDefaultAmenities(prisma);
 
   const [locations, propertyTypes, amenities, builders, projects] = await Promise.all([

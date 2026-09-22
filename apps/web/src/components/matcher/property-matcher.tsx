@@ -665,7 +665,7 @@ function CheckRow({ checked, onChange, children }: { checked: boolean; onChange:
 function normalizeSavedState(saved: State): State {
   const propertyCategory =
     saved.propertyCategory ||
-    (saved.propertyTypes.some((slug) => ["sco", "shop", "showroom", "office", "commercial-plot"].includes(slug)) ? "COMMERCIAL" : saved.propertyTypes.length ? "RESIDENTIAL" : "");
+    (saved.propertyTypes.some((slug) => ["sco", "scf", "shop", "showroom", "office", "commercial-plot", "industrial-plot"].includes(slug)) ? "COMMERCIAL" : saved.propertyTypes.length ? "RESIDENTIAL" : "");
   const timeline = timelines.includes(saved.timeline) ? saved.timeline : empty.timeline;
   return {
     ...saved,
