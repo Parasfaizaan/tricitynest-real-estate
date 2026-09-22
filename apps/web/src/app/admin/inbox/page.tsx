@@ -6,6 +6,7 @@ export default async function InboxPage() {
     prisma.contactMessage.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.sellLead.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.newsletter.findMany({ orderBy: { createdAt: "desc" } }),
+    
   ]);
   return (
     <div className="space-y-10">
