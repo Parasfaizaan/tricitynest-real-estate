@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
+import { clearBrowserSessionState } from "@/lib/client-logout";
 import { cn } from "@/lib/utils";
 import { motionDurations, motionEase } from "@/components/motion/variants";
 
@@ -67,6 +68,7 @@ export function Header({ onOpenMatcher }: { onOpenMatcher?: () => void }) {
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
+    clearBrowserSessionState();
     setUser(null);
     setAccountOpen(false);
     setOpen(false);

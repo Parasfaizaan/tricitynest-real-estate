@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "@/components/brand/logo";
+import { clearBrowserSessionState } from "@/lib/client-logout";
 import { cn } from "@/lib/utils";
 
 const adminLinks = [
@@ -38,6 +39,7 @@ export function AdminShell({
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
+    clearBrowserSessionState();
     router.push("/staff-login");
   }
 

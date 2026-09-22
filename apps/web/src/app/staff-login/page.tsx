@@ -29,7 +29,7 @@ function StaffLoginInner() {
     }
 
     const next = params.get("next");
-    if (data.user.role === "SUPER_ADMIN") router.push(next || "/super-admin");
+    if (data.user.role === "SUPER_ADMIN") router.push(next || "/admin");
     else if (data.user.role === "ADMIN") router.push(next || "/admin");
     else setError("Please use the user login page.");
   }
