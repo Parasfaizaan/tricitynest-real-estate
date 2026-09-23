@@ -7,6 +7,7 @@ const COOKIE = "tn_session";
 function secret() {
   return new TextEncoder().encode(process.env.AUTH_SECRET || "tricitynest-demo-secret-change-in-production-32b");
 }
+// // Middleware to check session and redirect if not logged in
 
 async function sessionFrom(req: NextRequest) {
   const token = req.cookies.get(COOKIE)?.value;
